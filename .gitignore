@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Temporary document extraction folders
+SkillBridgeTutors.API/Documents/workflow_ex/
+SkillBridgeTutors.API/Documents/workflow_extracted/
+SkillBridgeTutors.API/Documents/prompt_ex/
+SkillBridgeTutors.API/Documents/*.zip
