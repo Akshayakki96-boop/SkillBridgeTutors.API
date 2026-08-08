@@ -15,6 +15,7 @@ namespace SkillBridgeTutors.API.Data
         public DbSet<DemoSlot> DemoSlots => Set<DemoSlot>();
         public DbSet<DemoBooking> DemoBookings => Set<DemoBooking>();
         public DbSet<CallRecord> CallRecords => Set<CallRecord>();
+        public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

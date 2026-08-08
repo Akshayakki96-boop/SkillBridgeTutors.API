@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
@@ -72,6 +73,7 @@ namespace SkillBridgeTutors.API.Controllers
         /// <summary>
         /// Get a single lead by ID.
         /// </summary>
+        [Authorize]
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetLead(int id)
         {
@@ -83,6 +85,7 @@ namespace SkillBridgeTutors.API.Controllers
         /// <summary>
         /// Get all leads (Admin Dashboard).
         /// </summary>
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> GetAllLeads()
         {
