@@ -4,9 +4,9 @@ namespace SkillBridgeTutors.API.DTOs
 {
     public class DemoSlotDto
     {
-        public int Id { get; set; }
-        public DateTime SlotDateTime { get; set; }
-        public string? TutorName { get; set; }
+        public long SlotId { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
     }
 
     public class BookDemoDto
@@ -24,42 +24,34 @@ namespace SkillBridgeTutors.API.DTOs
         public string Subject { get; set; } = string.Empty;
 
         [Required]
-        public int SlotId { get; set; }
-
-        [Required]
-        public string StudentName { get; set; } = string.Empty;
-
-        [Required]
-        public string Grade { get; set; } = string.Empty;
-
-        [Required]
-        public string Curriculum { get; set; } = string.Empty;
+        public long SlotId { get; set; }
     }
 
     public class RescheduleDemoDto
     {
         [Required]
-        public int BookingId { get; set; }
+        public long BookingId { get; set; }
 
         [Required]
-        public int NewSlotId { get; set; }
+        public long NewSlotId { get; set; }
+
+        public string? Reason { get; set; }
     }
 
     public class CancelDemoDto
     {
         [Required]
-        public int BookingId { get; set; }
+        public long BookingId { get; set; }
+
+        public string? Reason { get; set; }
     }
 
     public class DemoBookingResponseDto
     {
-        public int Id { get; set; }
-        public string StudentName { get; set; } = string.Empty;
+        public long BookingId { get; set; }
         public string Subject { get; set; } = string.Empty;
-        public string Grade { get; set; } = string.Empty;
-        public string Curriculum { get; set; } = string.Empty;
-        public DateTime SlotDateTime { get; set; }
-        public string? TutorName { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
         public string? MeetingLink { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime BookedAt { get; set; }

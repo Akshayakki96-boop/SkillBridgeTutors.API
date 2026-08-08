@@ -35,11 +35,11 @@ namespace SkillBridgeTutors.API.Services
                 agent_id = agentId,
                 metadata = new Dictionary<string, string>
                 {
-                    { "lead_id", lead.Id.ToString() }
+                    { "lead_id", lead.LeadId.ToString() }
                 },
                 retell_llm_dynamic_variables = new Dictionary<string, string>
                 {
-                    { "customer_name", lead.ParentName },
+                    { "customer_name", lead.FullName },
                     { "customer_email", lead.Email },
                     { "customer_phone", lead.Phone },
                     { "customer_query", lead.Query }

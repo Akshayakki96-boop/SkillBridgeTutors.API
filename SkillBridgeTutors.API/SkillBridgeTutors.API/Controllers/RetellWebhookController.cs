@@ -43,7 +43,6 @@ namespace SkillBridgeTutors.API.Controllers
             }
 
             callRecord.CallStatus = dto.Call.CallStatus;
-            callRecord.Transcript = dto.Call.Transcript;
             callRecord.RecordingUrl = dto.Call.RecordingUrl;
             callRecord.DurationSeconds = dto.Call.DurationMs.HasValue
                 ? dto.Call.DurationMs.Value / 1000
@@ -54,11 +53,10 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 callRecord.EndedAt = DateTime.UtcNow;
 
-                // Update lead call status
                 var lead = await _leadRepository.GetByIdAsync(callRecord.LeadId);
                 if (lead != null)
                 {
-                    lead.CallStatus = dto.Call.CallStatus == "ended" ? "Completed" : "Failed";
+                    lead.Status = dto.Call.CallStatus == "ended" ? "Completed" : "Failed";
                     await _leadRepository.UpdateAsync(lead);
                 }
             }

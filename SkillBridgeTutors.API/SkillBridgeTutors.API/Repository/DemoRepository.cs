@@ -17,13 +17,13 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<DemoSlot>> GetAvailableSlotsAsync(int count = 5)
         {
             return await _context.DemoSlots
-                .Where(s => !s.IsBooked && s.SlotDateTime > DateTime.UtcNow)
-                .OrderBy(s => s.SlotDateTime)
+                .Where(s => s.IsAvailable && s.StartTime > DateTime.UtcNow)
+                .OrderBy(s => s.StartTime)
                 .Take(count)
                 .ToListAsync();
         }
 
-        public async Task<DemoSlot?> GetSlotByIdAsync(int slotId)
+        public async Task<DemoSlot?> GetSlotByIdAsync(long slotId)
         {
             return await _context.DemoSlots.FindAsync(slotId);
         }
@@ -35,22 +35,24 @@ namespace SkillBridgeTutors.API.Repository
             return booking;
         }
 
-        public async Task<DemoBooking?> GetBookingByIdAsync(int bookingId)
+        public async Task<DemoBooking?> GetBookingByIdAsync(long bookingId)
         {
             return await _context.DemoBookings
                 .Include(b => b.Lead)
                 .Include(b => b.DemoSlot)
-                .FirstOrDefaultAsync(b => b.Id == bookingId);
+                .FirstOrDefaultAsync(b => b.BookingId == bookingId);
         }
 
         public async Task UpdateBookingAsync(DemoBooking booking)
         {
+            booking.UpdatedAt = DateTime.UtcNow;
             _context.DemoBookings.Update(booking);
             await _context.SaveChangesAsync();
         }
 
         public async Task UpdateSlotAsync(DemoSlot slot)
         {
+            slot.UpdatedAt = DateTime.UtcNow;
             _context.DemoSlots.Update(slot);
             await _context.SaveChangesAsync();
         }

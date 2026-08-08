@@ -21,12 +21,12 @@ namespace SkillBridgeTutors.API.Repository
             return lead;
         }
 
-        public async Task<Lead?> GetByIdAsync(int id)
+        public async Task<Lead?> GetByIdAsync(long id)
         {
             return await _context.Leads
                 .Include(l => l.DemoBookings).ThenInclude(b => b.DemoSlot)
                 .Include(l => l.CallRecords)
-                .FirstOrDefaultAsync(l => l.Id == id);
+                .FirstOrDefaultAsync(l => l.LeadId == id);
         }
 
         public async Task<IEnumerable<Lead>> GetAllAsync()
@@ -40,6 +40,7 @@ namespace SkillBridgeTutors.API.Repository
 
         public async Task UpdateAsync(Lead lead)
         {
+            lead.UpdatedAt = DateTime.UtcNow;
             _context.Leads.Update(lead);
             await _context.SaveChangesAsync();
         }

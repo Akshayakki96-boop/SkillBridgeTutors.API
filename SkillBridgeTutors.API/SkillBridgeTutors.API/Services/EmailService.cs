@@ -25,24 +25,19 @@ namespace SkillBridgeTutors.API.Services
             var fromEmail = _configuration["Email:From"] ?? smtpUser;
 
             var slot = booking.DemoSlot;
-            var slotTime = slot?.SlotDateTime.ToString("dddd, dd MMMM yyyy 'at' HH:mm 'UTC'") ?? "TBD";
-            var tutorName = slot?.TutorName ?? "Our Specialist Tutor";
+            var slotTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy 'at' HH:mm 'UTC'") ?? "TBD";
             var meetingLink = booking.MeetingLink ?? "A meeting link will be sent shortly.";
 
             var subject = "SkillBridge Tutors - Your Free Demo Class is Confirmed!";
             var body = $@"
-Dear {lead.ParentName},
+Dear {lead.FullName},
 
 Thank you for booking a free demo class with SkillBridge Tutors.
 
 Here are your booking details:
 
-  Student Name  : {booking.StudentName}
-  Subject       : {booking.Subject}
-  Grade         : {booking.Grade}
-  Curriculum    : {booking.Curriculum}
+  Subject       : {lead.Subject}
   Date & Time   : {slotTime}
-  Tutor         : {tutorName}
   Meeting Link  : {meetingLink}
 
 If you need to reschedule or cancel, please contact us and we will be happy to help.

@@ -29,6 +29,7 @@ namespace SkillBridgeTutors.API.Repository
 
         public async Task UpdateAsync(CallRecord callRecord)
         {
+            callRecord.UpdatedAt = DateTime.UtcNow;
             _context.CallRecords.Update(callRecord);
             await _context.SaveChangesAsync();
         }

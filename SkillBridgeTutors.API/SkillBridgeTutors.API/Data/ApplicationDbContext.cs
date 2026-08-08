@@ -30,7 +30,7 @@ namespace SkillBridgeTutors.API.Data
             modelBuilder.Entity<DemoBooking>()
                 .HasOne(b => b.DemoSlot)
                 .WithMany()
-                .HasForeignKey(b => b.DemoSlotId)
+                .HasForeignKey(b => b.SlotId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<CallRecord>()

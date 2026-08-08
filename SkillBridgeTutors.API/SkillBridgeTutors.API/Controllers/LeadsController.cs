@@ -35,12 +35,13 @@ namespace SkillBridgeTutors.API.Controllers
         {
             var lead = new Lead
             {
-                ParentName = dto.ParentName,
+                FullName = dto.FullName,
                 Email = dto.Email,
                 Phone = dto.Phone,
                 Subject = dto.Subject,
                 Query = dto.Query,
-                CallStatus = "Pending"
+                Status = "Pending",
+                Source = "Website"
             };
 
             await _leadRepository.CreateAsync(lead);
@@ -52,30 +53,32 @@ namespace SkillBridgeTutors.API.Controllers
 
                 await _callRecordRepository.CreateAsync(new CallRecord
                 {
-                    LeadId = lead.Id,
+                    LeadId = lead.LeadId,
                     RetellCallId = callId,
+                    PhoneNumber = lead.Phone,
+                    CallDirection = "outbound",
                     CallStatus = "initiated"
                 });
 
-                lead.CallStatus = "InProgress";
+                lead.Status = "InProgress";
                 await _leadRepository.UpdateAsync(lead);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to trigger Retell call for lead {LeadId}", lead.Id);
-                lead.CallStatus = "Failed";
+                _logger.LogError(ex, "Failed to trigger Retell call for lead {LeadId}", lead.LeadId);
+                lead.Status = "Failed";
                 await _leadRepository.UpdateAsync(lead);
             }
 
-            return CreatedAtAction(nameof(GetLead), new { id = lead.Id }, MapToDto(lead));
+            return CreatedAtAction(nameof(GetLead), new { id = lead.LeadId }, MapToDto(lead));
         }
 
         /// <summary>
         /// Get a single lead by ID.
         /// </summary>
         [Authorize]
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetLead(int id)
+        [HttpGet("{id:long}")]
+        public async Task<IActionResult> GetLead(long id)
         {
             var lead = await _leadRepository.GetByIdAsync(id);
             if (lead == null) return NotFound();
@@ -95,13 +98,14 @@ namespace SkillBridgeTutors.API.Controllers
 
         private static LeadResponseDto MapToDto(Lead lead) => new()
         {
-            Id = lead.Id,
-            ParentName = lead.ParentName,
+            LeadId = lead.LeadId,
+            FullName = lead.FullName,
             Email = lead.Email,
             Phone = lead.Phone,
             Subject = lead.Subject,
             Query = lead.Query,
-            CallStatus = lead.CallStatus,
+            Status = lead.Status,
+            Source = lead.Source,
             CreatedAt = lead.CreatedAt
         };
     }

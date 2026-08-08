@@ -35,9 +35,9 @@ namespace SkillBridgeTutors.API.Controllers
             var slots = await _demoRepository.GetAvailableSlotsAsync(5);
             var result = slots.Select(s => new DemoSlotDto
             {
-                Id = s.Id,
-                SlotDateTime = s.SlotDateTime,
-                TutorName = s.TutorName
+                SlotId = s.SlotId,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime
             });
             return Ok(result);
         }
@@ -50,31 +50,26 @@ namespace SkillBridgeTutors.API.Controllers
         {
             var slot = await _demoRepository.GetSlotByIdAsync(dto.SlotId);
             if (slot == null) return NotFound(new { message = "Slot not found." });
-            if (slot.IsBooked) return Conflict(new { message = "Slot is already booked. Please choose another slot." });
+            if (!slot.IsAvailable) return Conflict(new { message = "Slot is already booked. Please choose another slot." });
 
             // Find lead by email and phone
             var leads = await _leadRepository.GetAllAsync();
             var lead = leads.FirstOrDefault(l => l.Email == dto.Email && l.Phone == dto.Phone);
             if (lead == null) return NotFound(new { message = "Lead not found. Please submit an enquiry first." });
 
-            slot.IsBooked = true;
+            slot.IsAvailable = false;
             await _demoRepository.UpdateSlotAsync(slot);
 
             var booking = new DemoBooking
             {
-                LeadId = lead.Id,
-                DemoSlotId = slot.Id,
-                StudentName = dto.StudentName,
-                Grade = dto.Grade,
-                Curriculum = dto.Curriculum,
-                Subject = dto.Subject,
+                LeadId = lead.LeadId,
+                SlotId = slot.SlotId,
                 Status = "Booked"
             };
 
             await _demoRepository.CreateBookingAsync(booking);
 
-            // Reload with slot for email
-            var fullBooking = await _demoRepository.GetBookingByIdAsync(booking.Id);
+            var fullBooking = await _demoRepository.GetBookingByIdAsync(booking.BookingId);
 
             try
             {
@@ -82,18 +77,15 @@ namespace SkillBridgeTutors.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Confirmation email failed for booking {BookingId}", booking.Id);
+                _logger.LogError(ex, "Confirmation email failed for booking {BookingId}", booking.BookingId);
             }
 
             return Ok(new DemoBookingResponseDto
             {
-                Id = fullBooking!.Id,
-                StudentName = fullBooking.StudentName,
-                Subject = fullBooking.Subject,
-                Grade = fullBooking.Grade,
-                Curriculum = fullBooking.Curriculum,
-                SlotDateTime = fullBooking.DemoSlot.SlotDateTime,
-                TutorName = fullBooking.DemoSlot.TutorName,
+                BookingId = fullBooking!.BookingId,
+                Subject = lead.Subject,
+                StartTime = fullBooking.DemoSlot.StartTime,
+                EndTime = fullBooking.DemoSlot.EndTime,
                 MeetingLink = fullBooking.MeetingLink,
                 Status = fullBooking.Status,
                 BookedAt = fullBooking.BookedAt
@@ -112,24 +104,25 @@ namespace SkillBridgeTutors.API.Controllers
 
             var newSlot = await _demoRepository.GetSlotByIdAsync(dto.NewSlotId);
             if (newSlot == null) return NotFound(new { message = "New slot not found." });
-            if (newSlot.IsBooked) return Conflict(new { message = "New slot is already booked." });
+            if (!newSlot.IsAvailable) return Conflict(new { message = "New slot is already booked." });
 
             // Free the old slot
-            var oldSlot = await _demoRepository.GetSlotByIdAsync(booking.DemoSlotId);
+            var oldSlot = await _demoRepository.GetSlotByIdAsync(booking.SlotId);
             if (oldSlot != null)
             {
-                oldSlot.IsBooked = false;
+                oldSlot.IsAvailable = true;
                 await _demoRepository.UpdateSlotAsync(oldSlot);
             }
 
-            newSlot.IsBooked = true;
+            newSlot.IsAvailable = false;
             await _demoRepository.UpdateSlotAsync(newSlot);
 
-            booking.DemoSlotId = newSlot.Id;
+            booking.RescheduledFromBookingId = booking.BookingId;
+            booking.SlotId = newSlot.SlotId;
             booking.Status = "Rescheduled";
             await _demoRepository.UpdateBookingAsync(booking);
 
-            return Ok(new { message = "Booking rescheduled successfully.", newSlotDateTime = newSlot.SlotDateTime });
+            return Ok(new { message = "Booking rescheduled successfully.", newStartTime = newSlot.StartTime, newEndTime = newSlot.EndTime });
         }
 
         /// <summary>
@@ -142,14 +135,16 @@ namespace SkillBridgeTutors.API.Controllers
             if (booking == null) return NotFound(new { message = "Booking not found." });
             if (booking.Status == "Cancelled") return BadRequest(new { message = "Booking is already cancelled." });
 
-            var slot = await _demoRepository.GetSlotByIdAsync(booking.DemoSlotId);
+            var slot = await _demoRepository.GetSlotByIdAsync(booking.SlotId);
             if (slot != null)
             {
-                slot.IsBooked = false;
+                slot.IsAvailable = true;
                 await _demoRepository.UpdateSlotAsync(slot);
             }
 
             booking.Status = "Cancelled";
+            booking.CancelledAt = DateTime.UtcNow;
+            booking.CancellationReason = dto.Reason;
             await _demoRepository.UpdateBookingAsync(booking);
 
             return Ok(new { message = "Booking cancelled successfully." });
