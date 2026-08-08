@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Repository;
@@ -23,12 +22,22 @@ builder.Services.AddScoped<ICallRecordRepository, CallRecordRepository>();
 builder.Services.AddHttpClient<IRetellService, RetellService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// Controllers
 builder.Services.AddControllers();
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "SkillBridge Tutors API", Version = "v1" });
+    c.SwaggerDoc("v1", new()
+    {
+        Title = "SkillBridge Tutors API",
+        Version = "v1"
+    });
 });
+
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -36,19 +45,16 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://skillbridgetutors.com",
             "https://www.skillbridgetutors.com")
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
