@@ -12,17 +12,20 @@ namespace SkillBridgeTutors.API.Controllers
         private readonly IDemoRepository _demoRepository;
         private readonly ILeadRepository _leadRepository;
         private readonly IEmailService _emailService;
+        private readonly IGoogleCalendarService _calendarService;
         private readonly ILogger<DemoController> _logger;
 
         public DemoController(
             IDemoRepository demoRepository,
             ILeadRepository leadRepository,
             IEmailService emailService,
+            IGoogleCalendarService calendarService,
             ILogger<DemoController> logger)
         {
             _demoRepository = demoRepository;
             _leadRepository = leadRepository;
             _emailService = emailService;
+            _calendarService = calendarService;
             _logger = logger;
         }
 
@@ -75,6 +78,19 @@ namespace SkillBridgeTutors.API.Controllers
 
             var fullBooking = await _demoRepository.GetBookingByIdAsync(booking.BookingId);
 
+            // Generate Google Meet link
+            try
+            {
+                var meetLink = await _calendarService.CreateMeetingAsync(lead, fullBooking!);
+                fullBooking!.MeetingLink = meetLink;
+                await _demoRepository.UpdateBookingAsync(fullBooking);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create Google Meet for booking {BookingId}", booking.BookingId);
+            }
+
+            // Send confirmation email
             try
             {
                 await _emailService.SendDemoConfirmationAsync(lead, fullBooking!);
