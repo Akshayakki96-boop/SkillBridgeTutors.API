@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace SkillBridgeTutors.API.DTOs
 {
@@ -11,19 +12,19 @@ namespace SkillBridgeTutors.API.DTOs
 
     public class BookDemoDto
     {
-        [Required]
+        [JsonPropertyName("customerName")]
         public string CustomerName { get; set; } = string.Empty;
 
-        [Required, EmailAddress]
+        [JsonPropertyName("email")]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
+        [JsonPropertyName("phone")]
         public string Phone { get; set; } = string.Empty;
 
-        [Required]
+        [JsonPropertyName("subject")]
         public string Subject { get; set; } = string.Empty;
 
-        [Required]
+        [JsonPropertyName("slotId")]
         public long SlotId { get; set; }
     }
 

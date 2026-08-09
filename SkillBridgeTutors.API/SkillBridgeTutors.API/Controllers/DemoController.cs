@@ -52,9 +52,11 @@ namespace SkillBridgeTutors.API.Controllers
             if (slot == null) return NotFound(new { message = "Slot not found." });
             if (!slot.IsAvailable) return Conflict(new { message = "Slot is already booked. Please choose another slot." });
 
-            // Find lead by email and phone
+            // Find lead by email or phone
             var leads = await _leadRepository.GetAllAsync();
-            var lead = leads.FirstOrDefault(l => l.Email == dto.Email && l.Phone == dto.Phone);
+            var lead = leads.FirstOrDefault(l => l.Email == dto.Email)
+                     ?? leads.FirstOrDefault(l => l.Phone == dto.Phone)
+                     ?? leads.FirstOrDefault(l => l.FullName == dto.CustomerName);
             if (lead == null) return NotFound(new { message = "Lead not found. Please submit an enquiry first." });
 
             slot.IsAvailable = false;
