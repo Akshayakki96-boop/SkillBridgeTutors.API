@@ -8,6 +8,8 @@ namespace SkillBridgeTutors.API.DTOs
         public long SlotId { get; set; }
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
+        public string DayName { get; set; } = string.Empty;
+        public string FormattedSlot { get; set; } = string.Empty;
     }
 
     public class BookDemoDto

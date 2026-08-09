@@ -37,7 +37,9 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 SlotId = s.SlotId,
                 StartTime = s.StartTime,
-                EndTime = s.EndTime
+                EndTime = s.EndTime,
+                DayName = s.StartTime.ToString("dddd"),
+                FormattedSlot = s.StartTime.ToString("dddd, dd MMMM yyyy 'from' HH:mm 'to' ") + s.EndTime.ToString("HH:mm 'UTC'")
             });
             return Ok(result);
         }
