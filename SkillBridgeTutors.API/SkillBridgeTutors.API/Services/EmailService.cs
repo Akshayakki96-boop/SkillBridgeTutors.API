@@ -25,26 +25,196 @@ namespace SkillBridgeTutors.API.Services
             var fromEmail = _configuration["Email:From"] ?? smtpUser;
 
             var slot = booking.DemoSlot;
-            var slotTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy 'at' HH:mm 'UTC'") ?? "TBD";
-            var meetingLink = booking.MeetingLink ?? "A meeting link will be sent shortly.";
+            var startTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy") ?? "TBD";
+            var timeRange = slot != null
+                ? $"{slot.StartTime:HH:mm} – {slot.EndTime:HH:mm} UTC"
+                : "TBD";
+            var meetingLink = booking.MeetingLink ?? "#";
 
-            var subject = "SkillBridge Tutors - Your Free Demo Class is Confirmed!";
-            var body = $@"
-Dear {lead.FullName},
+            var emailSubject = "🎓 Your Free Demo Class is Confirmed – SkillBridge Tutors";
 
-Thank you for booking a free demo class with SkillBridge Tutors.
+            var emailBody = $@"
+<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0""/>
+  <title>Demo Confirmation</title>
+</head>
+<body style=""margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;"">
 
-Here are your booking details:
+  <!-- Wrapper -->
+  <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#f4f6f9;padding:40px 0;"">
+    <tr>
+      <td align=""center"">
+        <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);"">
 
-  Subject       : {lead.Subject}
-  Date & Time   : {slotTime}
-  Meeting Link  : {meetingLink}
+          <!-- Header -->
+          <tr>
+            <td style=""background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:40px 40px 30px;text-align:center;"">
+              <h1 style=""margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;"">
+                SkillBridge Tutors
+              </h1>
+              <p style=""margin:8px 0 0;color:#bbdefb;font-size:14px;letter-spacing:2px;text-transform:uppercase;"">
+                Excellence in Online Tutoring
+              </p>
+            </td>
+          </tr>
 
-If you need to reschedule or cancel, please contact us and we will be happy to help.
+          <!-- Success Badge -->
+          <tr>
+            <td align=""center"" style=""padding:30px 40px 0;"">
+              <div style=""display:inline-block;background:#e8f5e9;border:2px solid #4caf50;border-radius:50px;padding:10px 28px;"">
+                <span style=""color:#2e7d32;font-size:15px;font-weight:600;"">✅ &nbsp;Booking Confirmed</span>
+              </div>
+            </td>
+          </tr>
 
-Warm regards,
-SkillBridge Tutors Team
-";
+          <!-- Greeting -->
+          <tr>
+            <td style=""padding:28px 40px 0;"">
+              <h2 style=""margin:0;color:#1a1a2e;font-size:22px;font-weight:600;"">
+                Hello, {lead.FullName}! 👋
+              </h2>
+              <p style=""margin:12px 0 0;color:#555;font-size:15px;line-height:1.7;"">
+                We are delighted to confirm your <strong>Free Demo Class</strong> with SkillBridge Tutors. 
+                Our expert tutor is looking forward to meeting you and your child!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Booking Details Card -->
+          <tr>
+            <td style=""padding:28px 40px;"">
+              <table width=""100%"" cellpadding=""0"" cellspacing=""0""
+                style=""background:#f0f4ff;border-radius:10px;border-left:5px solid #1a73e8;overflow:hidden;"">
+                <tr>
+                  <td style=""padding:24px 28px;"">
+                    <p style=""margin:0 0 16px;color:#1a73e8;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"">
+                      📋 Booking Details
+                    </p>
+
+                    <table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                      <tr>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;"">
+                          <span style=""color:#888;font-size:13px;"">Subject</span>
+                        </td>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;text-align:right;"">
+                          <strong style=""color:#1a1a2e;font-size:14px;"">{lead.Subject}</strong>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;"">
+                          <span style=""color:#888;font-size:13px;"">📅 Date</span>
+                        </td>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;text-align:right;"">
+                          <strong style=""color:#1a1a2e;font-size:14px;"">{startTime}</strong>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;"">
+                          <span style=""color:#888;font-size:13px;"">⏰ Time</span>
+                        </td>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;text-align:right;"">
+                          <strong style=""color:#1a1a2e;font-size:14px;"">{timeRange}</strong>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style=""padding:8px 0;"">
+                          <span style=""color:#888;font-size:13px;"">📧 Confirmation sent to</span>
+                        </td>
+                        <td style=""padding:8px 0;text-align:right;"">
+                          <strong style=""color:#1a73e8;font-size:14px;"">{lead.Email}</strong>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Join Button -->
+          <tr>
+            <td align=""center"" style=""padding:0 40px 32px;"">
+              <a href=""{meetingLink}""
+                style=""display:inline-block;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#ffffff;
+                       text-decoration:none;padding:14px 40px;border-radius:50px;font-size:15px;
+                       font-weight:600;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(26,115,232,0.4);"">
+                🎥 &nbsp; Join Demo Class
+              </a>
+              <p style=""margin:12px 0 0;color:#999;font-size:12px;"">
+                (Meeting link will be active 10 minutes before the session)
+              </p>
+            </td>
+          </tr>
+
+          <!-- What to Expect -->
+          <tr>
+            <td style=""padding:0 40px 32px;"">
+              <table width=""100%"" cellpadding=""0"" cellspacing=""0""
+                style=""background:#fff8e1;border-radius:10px;padding:20px 24px;"">
+                <tr>
+                  <td>
+                    <p style=""margin:0 0 12px;color:#f57f17;font-size:13px;font-weight:700;text-transform:uppercase;"">
+                      💡 What to Expect
+                    </p>
+                    <ul style=""margin:0;padding-left:18px;color:#555;font-size:14px;line-height:2;"">
+                      <li>A personalised 1-to-1 session with an expert tutor</li>
+                      <li>Assessment of your child's current level</li>
+                      <li>Tailored learning plan discussion</li>
+                      <li>Q&A — ask us anything!</li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Reschedule / Cancel -->
+          <tr>
+            <td style=""padding:0 40px 32px;"">
+              <p style=""margin:0;color:#777;font-size:13px;line-height:1.8;text-align:center;"">
+                Need to reschedule or cancel? Contact us at 
+                <a href=""mailto:info@skillbridgetutors.com"" style=""color:#1a73e8;text-decoration:none;"">
+                  info@skillbridgetutors.com
+                </a>
+                <br/>We are happy to help!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style=""padding:0 40px;"">
+              <hr style=""border:none;border-top:1px solid #e8eaf6;margin:0;""/>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style=""padding:24px 40px;text-align:center;"">
+              <p style=""margin:0;color:#aaa;font-size:12px;line-height:1.8;"">
+                © 2026 SkillBridge Tutors. All rights reserved.<br/>
+                <a href=""https://skillbridgetutors.com"" style=""color:#1a73e8;text-decoration:none;"">
+                  www.skillbridgetutors.com
+                </a>
+                &nbsp;|&nbsp;
+                <a href=""mailto:info@skillbridgetutors.com"" style=""color:#1a73e8;text-decoration:none;"">
+                  info@skillbridgetutors.com
+                </a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>";
 
             using var client = new SmtpClient(smtpHost, smtpPort)
             {
@@ -52,7 +222,14 @@ SkillBridge Tutors Team
                 EnableSsl = true
             };
 
-            var mailMessage = new MailMessage(fromEmail!, lead.Email, subject, body);
+            var mailMessage = new MailMessage
+            {
+                From = new MailAddress(smtpUser!, "SkillBridge Tutors"),
+                Subject = emailSubject,
+                Body = emailBody,
+                IsBodyHtml = true
+            };
+            mailMessage.To.Add(lead.Email);
 
             try
             {
