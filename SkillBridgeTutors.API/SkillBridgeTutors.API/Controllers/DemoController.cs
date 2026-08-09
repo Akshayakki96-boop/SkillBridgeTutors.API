@@ -36,13 +36,13 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> GetAvailableSlots()
         {
             var slots = await _demoRepository.GetAvailableSlotsAsync(5);
-            var result = slots.Select(s => new DemoSlotDto
+            var result = slots.Select((s, index) => new DemoSlotDto
             {
                 SlotId = s.SlotId,
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
                 DayName = s.StartTime.ToString("dddd"),
-                FormattedSlot = s.StartTime.ToString("dddd, dd MMMM yyyy 'from' HH:mm 'to' ") + s.EndTime.ToString("HH:mm 'UTC'")
+                FormattedSlot = $"Option {index + 1}: {s.StartTime:dddd, dd MMMM yyyy} from {s.StartTime:HH:mm} to {s.EndTime:HH:mm} UTC (use slotId: {s.SlotId})"
             });
             return Ok(result);
         }
