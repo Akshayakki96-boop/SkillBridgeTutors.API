@@ -5,11 +5,12 @@ namespace SkillBridgeTutors.API.DTOs
 {
     public class DemoSlotDto
     {
-        public long SlotId { get; set; }
-        public DateTime StartTime { get; set; }
-        public DateTime EndTime { get; set; }
+        public int OptionNumber { get; set; }   // 1-5, always use this when booking
+        public long SlotId { get; set; }         // internal DB id (ignore)
         public string DayName { get; set; } = string.Empty;
         public string FormattedSlot { get; set; } = string.Empty;
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
     }
 
     public class BookDemoDto
@@ -26,8 +27,9 @@ namespace SkillBridgeTutors.API.DTOs
         [JsonPropertyName("subject")]
         public string Subject { get; set; } = string.Empty;
 
-        [JsonPropertyName("slotId")]
-        public long SlotId { get; set; }
+        // Retell AI sends 1, 2, 3, 4, or 5 — the option number from getAvailableDemoSlots
+        [JsonPropertyName("optionNumber")]
+        public int OptionNumber { get; set; }
     }
 
     public class RescheduleDemoDto

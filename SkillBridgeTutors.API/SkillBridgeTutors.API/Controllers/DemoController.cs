@@ -35,14 +35,15 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpGet("slots")]
         public async Task<IActionResult> GetAvailableSlots()
         {
-            var slots = await _demoRepository.GetAvailableSlotsAsync(5);
+            var slots = (await _demoRepository.GetAvailableSlotsAsync(5)).ToList();
             var result = slots.Select((s, index) => new DemoSlotDto
             {
+                OptionNumber = index + 1,
                 SlotId = s.SlotId,
+                DayName = s.StartTime.ToString("dddd"),
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
-                DayName = s.StartTime.ToString("dddd"),
-                FormattedSlot = $"Option {index + 1}: {s.StartTime:dddd, dd MMMM yyyy} from {s.StartTime:HH:mm} to {s.EndTime:HH:mm} UTC (use slotId: {s.SlotId})"
+                FormattedSlot = $"{s.StartTime:dddd, dd MMMM yyyy} from {s.StartTime:HH:mm} to {s.EndTime:HH:mm} UTC"
             });
             return Ok(result);
         }
@@ -53,9 +54,17 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost("book")]
         public async Task<IActionResult> BookDemo([FromBody] BookDemoDto dto)
         {
-            var slot = await _demoRepository.GetSlotByIdAsync(dto.SlotId);
-            if (slot == null) return NotFound(new { message = "Slot not found." });
-            if (!slot.IsAvailable) return Conflict(new { message = "Slot is already booked. Please choose another slot." });
+            // Retell AI always sends optionNumber 1-5 from getAvailableDemoSlots response
+            var availableSlots = (await _demoRepository.GetAvailableSlotsAsync(5)).ToList();
+            var index = dto.OptionNumber - 1;
+
+            if (index < 0 || index >= availableSlots.Count)
+                return NotFound(new { message = $"Option {dto.OptionNumber} not found. Please call getAvailableDemoSlots first." });
+
+            var slot = availableSlots[index];
+
+            if (!slot.IsAvailable)
+                return Conflict(new { message = "Slot is already booked. Please choose another option." });
 
             // Find lead by email or phone
             var leads = await _leadRepository.GetAllAsync();
