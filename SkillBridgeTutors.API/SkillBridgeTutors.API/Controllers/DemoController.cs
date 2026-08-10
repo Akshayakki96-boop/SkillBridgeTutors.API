@@ -54,14 +54,23 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost("book")]
         public async Task<IActionResult> BookDemo([FromBody] BookDemoDto dto)
         {
-            // Retell AI always sends optionNumber 1-5 from getAvailableDemoSlots response
+            // Retell AI sends either slotId or optionNumber (1-5) from getAvailableDemoSlots response
             var availableSlots = (await _demoRepository.GetAvailableSlotsAsync(5)).ToList();
-            var index = dto.OptionNumber - 1;
 
-            if (index < 0 || index >= availableSlots.Count)
-                return NotFound(new { message = $"Option {dto.OptionNumber} not found. Please call getAvailableDemoSlots first." });
-
-            var slot = availableSlots[index];
+            DemoSlot? slot;
+            if (dto.SlotId.HasValue && dto.SlotId > 0)
+            {
+                slot = availableSlots.FirstOrDefault(s => s.SlotId == dto.SlotId.Value);
+                if (slot == null)
+                    return NotFound(new { message = $"Slot {dto.SlotId} not found. Please call getAvailableDemoSlots first." });
+            }
+            else
+            {
+                var index = dto.OptionNumber - 1;
+                if (index < 0 || index >= availableSlots.Count)
+                    return NotFound(new { message = $"Option {dto.OptionNumber} not found. Please call getAvailableDemoSlots first." });
+                slot = availableSlots[index];
+            }
 
             if (!slot.IsAvailable)
                 return Conflict(new { message = "Slot is already booked. Please choose another option." });

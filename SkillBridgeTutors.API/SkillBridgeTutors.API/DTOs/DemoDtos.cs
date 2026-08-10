@@ -30,6 +30,10 @@ namespace SkillBridgeTutors.API.DTOs
         // Retell AI sends 1, 2, 3, 4, or 5 — the option number from getAvailableDemoSlots
         [JsonPropertyName("optionNumber")]
         public int OptionNumber { get; set; }
+
+        // Retell AI may send slotId directly from the slots response
+        [JsonPropertyName("slotId")]
+        public long? SlotId { get; set; }
     }
 
     public class RescheduleDemoDto
