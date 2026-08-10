@@ -14,7 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"));
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions =>
+        {
+            // Retry up to 5 times for transient Azure SQL errors (e.g. auto-pause wake-up)
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+
+            // Fail fast rather than hanging for 120s
+            sqlOptions.CommandTimeout(30);
+        });
 });
 
 // Repositories
