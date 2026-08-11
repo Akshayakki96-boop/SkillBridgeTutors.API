@@ -40,7 +40,7 @@ namespace SkillBridgeTutors.API.Controllers
                 Phone = dto.Phone,
                 Subject = dto.Subject,
                 Query = dto.Query,
-                Status = "Pending",
+                Status = "New",
                 Source = "Website"
             };
 
@@ -60,13 +60,13 @@ namespace SkillBridgeTutors.API.Controllers
                     CallStatus = "initiated"
                 });
 
-                lead.Status = "InProgress";
+                lead.Status = "Calling";
                 await _leadRepository.UpdateAsync(lead);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to trigger Retell call for lead {LeadId}", lead.LeadId);
-                lead.Status = "Failed";
+                lead.Status = "CallPending";
                 await _leadRepository.UpdateAsync(lead);
             }
 

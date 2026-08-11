@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
@@ -52,8 +53,32 @@ namespace SkillBridgeTutors.API.Controllers
         /// Books a demo slot. Called by Retell AI agent after parent selects a slot.
         /// </summary>
         [HttpPost("book")]
-        public async Task<IActionResult> BookDemo([FromBody] BookDemoDto dto)
+        public async Task<IActionResult> BookDemo([FromBody] JsonElement rawBody)
         {
+            // Log the exact raw payload Retell sends so we can diagnose field name mismatches
+            _logger.LogInformation("BookDemo raw payload from Retell: {Payload}", rawBody.ToString());
+
+            // Parse all known field name variants Retell might send
+            var customerName = TryGetString(rawBody, "customerName", "customer_name", "name");
+            var email        = TryGetString(rawBody, "email", "customerEmail", "customer_email");
+            var phone        = TryGetString(rawBody, "phone", "customerPhone", "customer_phone", "phoneNumber", "phone_number");
+            var subject      = TryGetString(rawBody, "subject");
+            var slotId       = TryGetLong(rawBody,   "slotId", "slot_id", "SlotId");
+            var optionNumber = TryGetInt(rawBody,    "optionNumber", "option_number", "option", "selectedOption", "selected_option");
+
+            var dto = new BookDemoDto
+            {
+                CustomerName = customerName ?? string.Empty,
+                Email        = email ?? string.Empty,
+                Phone        = phone ?? string.Empty,
+                Subject      = subject ?? string.Empty,
+                SlotId       = slotId,
+                OptionNumber = optionNumber ?? 0
+            };
+
+            _logger.LogInformation("BookDemo parsed — customerName={Name} email={Email} phone={Phone} slotId={SlotId} optionNumber={Option}",
+                dto.CustomerName, dto.Email, dto.Phone, dto.SlotId, dto.OptionNumber);
+
             // Retell AI sends either slotId or optionNumber (1-5) from getAvailableDemoSlots response
             var availableSlots = (await _demoRepository.GetAvailableSlotsAsync(5)).ToList();
 
@@ -68,7 +93,7 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 var index = dto.OptionNumber - 1;
                 if (index < 0 || index >= availableSlots.Count)
-                    return NotFound(new { message = $"Option {dto.OptionNumber} not found. Please call getAvailableDemoSlots first." });
+                    return NotFound(new { message = $"Option {dto.OptionNumber} not found. Please call getAvailableDemoSlots first.", rawPayload = rawBody.ToString() });
                 slot = availableSlots[index];
             }
 
@@ -186,6 +211,32 @@ namespace SkillBridgeTutors.API.Controllers
             await _demoRepository.UpdateBookingAsync(booking);
 
             return Ok(new { message = "Booking cancelled successfully." });
+        }
+
+        // --- Helpers to safely extract values from raw JSON regardless of field name casing ---
+
+        private static string? TryGetString(JsonElement el, params string[] keys)
+        {
+            foreach (var key in keys)
+                if (el.TryGetProperty(key, out var prop) && prop.ValueKind == JsonValueKind.String)
+                    return prop.GetString();
+            return null;
+        }
+
+        private static long? TryGetLong(JsonElement el, params string[] keys)
+        {
+            foreach (var key in keys)
+                if (el.TryGetProperty(key, out var prop) && prop.TryGetInt64(out var val))
+                    return val;
+            return null;
+        }
+
+        private static int? TryGetInt(JsonElement el, params string[] keys)
+        {
+            foreach (var key in keys)
+                if (el.TryGetProperty(key, out var prop) && prop.TryGetInt32(out var val))
+                    return val;
+            return null;
         }
     }
 }

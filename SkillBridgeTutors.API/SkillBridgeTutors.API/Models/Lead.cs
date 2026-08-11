@@ -25,7 +25,7 @@ namespace SkillBridgeTutors.API.Models
         public string Query { get; set; } = string.Empty;
 
         [Column("Status")]
-        public string Status { get; set; } = "Pending";
+        public string Status { get; set; } = "New";
 
         [Column("Source")]
         public string Source { get; set; } = "Website";
