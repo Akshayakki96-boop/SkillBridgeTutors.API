@@ -128,9 +128,15 @@ namespace SkillBridgeTutors.API.Controllers
                 fullBooking!.MeetingLink = meetLink;
                 await _demoRepository.UpdateBookingAsync(fullBooking);
             }
+            catch (Google.GoogleApiException gex)
+            {
+                _logger.LogError(gex, "Google API error creating Meet for booking {BookingId} — Status: {Status} Message: {Message}",
+                    booking.BookingId, gex.HttpStatusCode, gex.Error?.Message);
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create Google Meet for booking {BookingId}", booking.BookingId);
+                _logger.LogError(ex, "Failed to create Google Meet for booking {BookingId} — {ExType}: {ExMessage}",
+                    booking.BookingId, ex.GetType().Name, ex.Message);
             }
 
             // Send confirmation email
