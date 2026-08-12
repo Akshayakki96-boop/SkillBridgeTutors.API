@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
@@ -15,19 +16,22 @@ namespace SkillBridgeTutors.API.Controllers
         private readonly IEmailService _emailService;
         private readonly IGoogleCalendarService _calendarService;
         private readonly ILogger<DemoController> _logger;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         public DemoController(
             IDemoRepository demoRepository,
             ILeadRepository leadRepository,
             IEmailService emailService,
             IGoogleCalendarService calendarService,
-            ILogger<DemoController> logger)
+            ILogger<DemoController> logger,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _demoRepository = demoRepository;
             _leadRepository = leadRepository;
             _emailService = emailService;
             _calendarService = calendarService;
             _logger = logger;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <summary>
@@ -138,33 +142,46 @@ namespace SkillBridgeTutors.API.Controllers
                 BookedAt    = fullBooking.BookedAt
             };
 
+            // Capture only plain values — scoped services will be disposed when the request ends
+            var bookingId   = fullBooking.BookingId;
+            var slotIdVal   = slot.SlotId;
+            var leadSubject = lead.Subject;
+
             // Run teacher assignment + emails in background (fire-and-forget)
             _ = Task.Run(async () =>
             {
+                // Create a new DI scope so we get a fresh ApplicationDbContext
+                await using var scope = _serviceScopeFactory.CreateAsyncScope();
+                var demoRepo     = scope.ServiceProvider.GetRequiredService<IDemoRepository>();
+                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+
+                var bgBooking = await demoRepo.GetBookingByIdAsync(bookingId);
+                if (bgBooking == null) return;
+
                 try
                 {
-                    var teacher = await _demoRepository.GetAvailableTeacherAsync(slot.SlotId, lead.Subject);
+                    var teacher = await demoRepo.GetAvailableTeacherAsync(slotIdVal, leadSubject);
                     if (teacher != null)
                     {
-                        fullBooking.TeacherId = teacher.TeacherId;
-                        await _demoRepository.UpdateBookingAsync(fullBooking);
-                        _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", teacher.TeacherId, fullBooking.BookingId);
+                        bgBooking.TeacherId = teacher.TeacherId;
+                        await demoRepo.UpdateBookingAsync(bgBooking);
+                        _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", teacher.TeacherId, bookingId);
 
-                        try { await _emailService.SendTeacherNotificationAsync(teacher, lead, fullBooking); }
-                        catch (Exception ex) { _logger.LogError(ex, "Teacher email failed for booking {BookingId}", fullBooking.BookingId); }
+                        try { await emailService.SendTeacherNotificationAsync(teacher, bgBooking.Lead, bgBooking); }
+                        catch (Exception ex) { _logger.LogError(ex, "Teacher email failed for booking {BookingId}", bookingId); }
                     }
                     else
                     {
-                        _logger.LogWarning("No available teacher for slot {SlotId} subject {Subject}", slot.SlotId, lead.Subject);
+                        _logger.LogWarning("No available teacher for slot {SlotId} subject {Subject}", slotIdVal, leadSubject);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Background teacher assignment failed for booking {BookingId}", fullBooking.BookingId);
+                    _logger.LogError(ex, "Background teacher assignment failed for booking {BookingId}", bookingId);
                 }
 
-                try { await _emailService.SendDemoConfirmationAsync(lead, fullBooking); }
-                catch (Exception ex) { _logger.LogError(ex, "Parent confirmation email failed for booking {BookingId}", fullBooking.BookingId); }
+                try { await emailService.SendDemoConfirmationAsync(bgBooking.Lead, bgBooking); }
+                catch (Exception ex) { _logger.LogError(ex, "Parent confirmation email failed for booking {BookingId}", bookingId); }
             });
 
             return Ok(response);
