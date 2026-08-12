@@ -121,72 +121,53 @@ namespace SkillBridgeTutors.API.Controllers
 
             var fullBooking = await _demoRepository.GetBookingByIdAsync(booking.BookingId);
 
-            // Generate Jitsi Meet link
-            try
-            {
-                var meetLink = await _calendarService.CreateMeetingAsync(lead, fullBooking!);
-                fullBooking!.MeetingLink = meetLink;
-                await _demoRepository.UpdateBookingAsync(fullBooking);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to create Meet link for booking {BookingId}", booking.BookingId);
-            }
+            // Generate Jitsi Meet link (fast — no external API call)
+            var meetLink = await _calendarService.CreateMeetingAsync(lead, fullBooking!);
+            fullBooking!.MeetingLink = meetLink;
+            await _demoRepository.UpdateBookingAsync(fullBooking);
 
-            // Assign a free teacher for this slot and subject
-            Teacher? assignedTeacher = null;
-            try
+            // Build response immediately — don't wait for emails or teacher assignment
+            var response = new DemoBookingResponseDto
             {
-                assignedTeacher = await _demoRepository.GetAvailableTeacherAsync(slot.SlotId, lead.Subject);
-                if (assignedTeacher != null)
-                {
-                    fullBooking!.TeacherId = assignedTeacher.TeacherId;
-                    await _demoRepository.UpdateBookingAsync(fullBooking!);
-                    _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", assignedTeacher.TeacherId, fullBooking!.BookingId);
-                }
-                else
-                {
-                    _logger.LogWarning("No available teacher found for slot {SlotId} and subject {Subject}", slot.SlotId, lead.Subject);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to assign teacher for booking {BookingId}", booking.BookingId);
-            }
+                BookingId   = fullBooking.BookingId,
+                Subject     = lead.Subject,
+                StartTime   = fullBooking.DemoSlot.StartTime,
+                EndTime     = fullBooking.DemoSlot.EndTime,
+                MeetingLink = fullBooking.MeetingLink,
+                Status      = fullBooking.Status,
+                BookedAt    = fullBooking.BookedAt
+            };
 
-            // Send confirmation email to parent
-            try
-            {
-                await _emailService.SendDemoConfirmationAsync(lead, fullBooking!);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Confirmation email failed for booking {BookingId}", booking.BookingId);
-            }
-
-            // Send notification email to teacher
-            if (assignedTeacher != null)
+            // Run teacher assignment + emails in background (fire-and-forget)
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    await _emailService.SendTeacherNotificationAsync(assignedTeacher, lead, fullBooking!);
+                    var teacher = await _demoRepository.GetAvailableTeacherAsync(slot.SlotId, lead.Subject);
+                    if (teacher != null)
+                    {
+                        fullBooking.TeacherId = teacher.TeacherId;
+                        await _demoRepository.UpdateBookingAsync(fullBooking);
+                        _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", teacher.TeacherId, fullBooking.BookingId);
+
+                        try { await _emailService.SendTeacherNotificationAsync(teacher, lead, fullBooking); }
+                        catch (Exception ex) { _logger.LogError(ex, "Teacher email failed for booking {BookingId}", fullBooking.BookingId); }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No available teacher for slot {SlotId} subject {Subject}", slot.SlotId, lead.Subject);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Teacher notification email failed for booking {BookingId}", booking.BookingId);
+                    _logger.LogError(ex, "Background teacher assignment failed for booking {BookingId}", fullBooking.BookingId);
                 }
-            }
 
-            return Ok(new DemoBookingResponseDto
-            {
-                BookingId = fullBooking!.BookingId,
-                Subject = lead.Subject,
-                StartTime = fullBooking.DemoSlot.StartTime,
-                EndTime = fullBooking.DemoSlot.EndTime,
-                MeetingLink = fullBooking.MeetingLink,
-                Status = fullBooking.Status,
-                BookedAt = fullBooking.BookedAt
+                try { await _emailService.SendDemoConfirmationAsync(lead, fullBooking); }
+                catch (Exception ex) { _logger.LogError(ex, "Parent confirmation email failed for booking {BookingId}", fullBooking.BookingId); }
             });
+
+            return Ok(response);
         }
 
         /// <summary>
