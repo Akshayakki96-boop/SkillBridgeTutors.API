@@ -39,6 +39,12 @@ namespace SkillBridgeTutors.API.Models
         [Column("MeetingLink")]
         public string? MeetingLink { get; set; }
 
+        [Column("TeacherId")]
+        public long? TeacherId { get; set; }
+
+        [ForeignKey("TeacherId")]
+        public Teacher? Teacher { get; set; }
+
         [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

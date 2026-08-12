@@ -38,6 +38,7 @@ builder.Services.AddHttpClient<IRetellService, RetellService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]

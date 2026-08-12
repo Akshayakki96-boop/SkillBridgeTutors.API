@@ -242,5 +242,84 @@ namespace SkillBridgeTutors.API.Services
                 throw;
             }
         }
+
+        public async Task SendTeacherNotificationAsync(Teacher teacher, Lead lead, DemoBooking booking)
+        {
+            var smtpHost = _configuration["Email:SmtpHost"];
+            var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
+            var smtpUser = _configuration["Email:SmtpUser"];
+            var smtpPass = _configuration["Email:SmtpPass"];
+            var fromEmail = _configuration["Email:From"] ?? smtpUser;
+
+            var slot = booking.DemoSlot;
+            var startTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy") ?? "TBD";
+            var timeRange = slot != null
+                ? $"{slot.StartTime:HH:mm} – {slot.EndTime:HH:mm} UTC"
+                : "TBD";
+            var meetingLink = booking.MeetingLink ?? "#";
+
+            var body = $@"
+<!DOCTYPE html>
+<html>
+<body style=""font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;padding:30px;"">
+  <table width=""600"" style=""background:#fff;border-radius:10px;padding:30px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,0.08);"">
+    <tr><td style=""background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:30px;border-radius:8px 8px 0 0;text-align:center;"">
+      <h1 style=""color:#fff;margin:0;"">SkillBridge Tutors</h1>
+      <p style=""color:#bbdefb;margin:6px 0 0;"">New Demo Class Assigned</p>
+    </td></tr>
+    <tr><td style=""padding:28px;"">
+      <h2 style=""color:#1a1a2e;"">Hello, {teacher.FullName}! 👋</h2>
+      <p style=""color:#555;font-size:15px;"">You have been assigned a <strong>Free Demo Class</strong>. Please be available at the scheduled time.</p>
+
+      <table width=""100%"" style=""background:#f0f4ff;border-left:5px solid #1a73e8;border-radius:8px;padding:20px;margin-top:16px;"">
+        <tr><td style=""padding:8px 0;""><strong>Student:</strong> {lead.FullName}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Subject:</strong> {lead.Subject}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Date:</strong> {startTime}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Time:</strong> {timeRange}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Parent Email:</strong> {lead.Email}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Parent Phone:</strong> {lead.Phone}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Query:</strong> {lead.Query}</td></tr>
+      </table>
+
+      <div style=""text-align:center;margin-top:28px;"">
+        <a href=""{meetingLink}"" style=""background:#1a73e8;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:600;"">
+          Join Demo Class
+        </a>
+      </div>
+
+      <p style=""color:#888;font-size:13px;margin-top:24px;text-align:center;"">
+        Please join the session 5 minutes early to set up.
+      </p>
+    </td></tr>
+  </table>
+</body>
+</html>";
+
+            using var client = new SmtpClient(smtpHost, smtpPort)
+            {
+                Credentials = new NetworkCredential(smtpUser, smtpPass),
+                EnableSsl = true
+            };
+
+            var mailMessage = new MailMessage
+            {
+                From = new MailAddress(fromEmail!),
+                Subject = $"📚 Demo Class Assigned – {lead.FullName} ({lead.Subject}) on {startTime}",
+                Body = body,
+                IsBodyHtml = true
+            };
+            mailMessage.To.Add(teacher.Email);
+
+            try
+            {
+                await client.SendMailAsync(mailMessage);
+                _logger.LogInformation("Teacher notification email sent to {Email}", teacher.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send teacher notification email to {Email}", teacher.Email);
+                throw;
+            }
+        }
     }
 }

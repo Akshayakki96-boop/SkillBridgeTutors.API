@@ -56,5 +56,21 @@ namespace SkillBridgeTutors.API.Repository
             _context.DemoSlots.Update(slot);
             await _context.SaveChangesAsync();
         }
+
+        public async Task<Teacher?> GetAvailableTeacherAsync(long slotId, string subject)
+        {
+            // Get teacher IDs already booked for this slot
+            var busyTeacherIds = await _context.DemoBookings
+                .Where(b => b.SlotId == slotId && b.TeacherId != null && b.Status != "Cancelled")
+                .Select(b => b.TeacherId!.Value)
+                .ToListAsync();
+
+            // Find an active teacher who teaches this subject and is not busy at this slot
+            return await _context.Teachers
+                .Where(t => t.IsActive
+                    && t.Subjects.Contains(subject)
+                    && !busyTeacherIds.Contains(t.TeacherId))
+                .FirstOrDefaultAsync();
+        }
     }
 }

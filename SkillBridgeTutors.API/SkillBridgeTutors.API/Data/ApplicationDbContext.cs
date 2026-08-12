@@ -16,6 +16,7 @@ namespace SkillBridgeTutors.API.Data
         public DbSet<DemoBooking> DemoBookings => Set<DemoBooking>();
         public DbSet<CallRecord> CallRecords => Set<CallRecord>();
         public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+        public DbSet<Teacher> Teachers => Set<Teacher>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +33,12 @@ namespace SkillBridgeTutors.API.Data
                 .WithMany()
                 .HasForeignKey(b => b.SlotId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DemoBooking>()
+                .HasOne(b => b.Teacher)
+                .WithMany(t => t.DemoBookings)
+                .HasForeignKey(b => b.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<CallRecord>()
                 .HasOne(c => c.Lead)

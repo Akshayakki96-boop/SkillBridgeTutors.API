@@ -5,5 +5,6 @@ namespace SkillBridgeTutors.API.Interfaces
     public interface IEmailService
     {
         Task SendDemoConfirmationAsync(Lead lead, DemoBooking booking);
+        Task SendTeacherNotificationAsync(Teacher teacher, Lead lead, DemoBooking booking);
     }
 }

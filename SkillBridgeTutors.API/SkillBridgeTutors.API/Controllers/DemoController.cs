@@ -121,25 +121,40 @@ namespace SkillBridgeTutors.API.Controllers
 
             var fullBooking = await _demoRepository.GetBookingByIdAsync(booking.BookingId);
 
-            // Generate Google Meet link
+            // Generate Jitsi Meet link
             try
             {
                 var meetLink = await _calendarService.CreateMeetingAsync(lead, fullBooking!);
                 fullBooking!.MeetingLink = meetLink;
                 await _demoRepository.UpdateBookingAsync(fullBooking);
             }
-            catch (Google.GoogleApiException gex)
+            catch (Exception ex)
             {
-                _logger.LogError(gex, "Google API error creating Meet for booking {BookingId} — Status: {Status} Message: {Message}",
-                    booking.BookingId, gex.HttpStatusCode, gex.Error?.Message);
+                _logger.LogError(ex, "Failed to create Meet link for booking {BookingId}", booking.BookingId);
+            }
+
+            // Assign a free teacher for this slot and subject
+            Teacher? assignedTeacher = null;
+            try
+            {
+                assignedTeacher = await _demoRepository.GetAvailableTeacherAsync(slot.SlotId, lead.Subject);
+                if (assignedTeacher != null)
+                {
+                    fullBooking!.TeacherId = assignedTeacher.TeacherId;
+                    await _demoRepository.UpdateBookingAsync(fullBooking!);
+                    _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", assignedTeacher.TeacherId, fullBooking!.BookingId);
+                }
+                else
+                {
+                    _logger.LogWarning("No available teacher found for slot {SlotId} and subject {Subject}", slot.SlotId, lead.Subject);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create Google Meet for booking {BookingId} — {ExType}: {ExMessage}",
-                    booking.BookingId, ex.GetType().Name, ex.Message);
+                _logger.LogError(ex, "Failed to assign teacher for booking {BookingId}", booking.BookingId);
             }
 
-            // Send confirmation email
+            // Send confirmation email to parent
             try
             {
                 await _emailService.SendDemoConfirmationAsync(lead, fullBooking!);
@@ -147,6 +162,19 @@ namespace SkillBridgeTutors.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Confirmation email failed for booking {BookingId}", booking.BookingId);
+            }
+
+            // Send notification email to teacher
+            if (assignedTeacher != null)
+            {
+                try
+                {
+                    await _emailService.SendTeacherNotificationAsync(assignedTeacher, lead, fullBooking!);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Teacher notification email failed for booking {BookingId}", booking.BookingId);
+                }
             }
 
             return Ok(new DemoBookingResponseDto

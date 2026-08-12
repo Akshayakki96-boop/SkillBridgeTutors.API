@@ -10,5 +10,6 @@ namespace SkillBridgeTutors.API.Interfaces
         Task<DemoBooking?> GetBookingByIdAsync(long bookingId);
         Task UpdateBookingAsync(DemoBooking booking);
         Task UpdateSlotAsync(DemoSlot slot);
+        Task<Teacher?> GetAvailableTeacherAsync(long slotId, string subject);
     }
 }
