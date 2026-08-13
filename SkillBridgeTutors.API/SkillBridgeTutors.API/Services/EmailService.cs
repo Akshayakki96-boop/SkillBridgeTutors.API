@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
 
@@ -9,11 +10,13 @@ namespace SkillBridgeTutors.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly ApplicationDbContext _context;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, ApplicationDbContext context)
         {
             _configuration = configuration;
             _logger = logger;
+            _context = context;
         }
 
         public async Task SendDemoConfirmationAsync(Lead lead, DemoBooking booking)
@@ -235,10 +238,31 @@ namespace SkillBridgeTutors.API.Services
             {
                 await client.SendMailAsync(mailMessage);
                 _logger.LogInformation("Confirmation email sent to {Email}", lead.Email);
+                _context.EmailLogs.Add(new EmailLog
+                {
+                    EmailType = "ParentConfirmation",
+                    ToAddress = lead.Email,
+                    Subject   = emailSubject,
+                    BookingId = booking.BookingId,
+                    Status    = "Sent",
+                    SentAt    = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send confirmation email to {Email}", lead.Email);
+                _context.EmailLogs.Add(new EmailLog
+                {
+                    EmailType    = "ParentConfirmation",
+                    ToAddress    = lead.Email,
+                    Subject      = emailSubject,
+                    BookingId    = booking.BookingId,
+                    Status       = "Failed",
+                    ErrorMessage = ex.Message,
+                    SentAt       = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
                 throw;
             }
         }
@@ -314,10 +338,31 @@ namespace SkillBridgeTutors.API.Services
             {
                 await client.SendMailAsync(mailMessage);
                 _logger.LogInformation("Teacher notification email sent to {Email}", teacher.Email);
+                _context.EmailLogs.Add(new EmailLog
+                {
+                    EmailType = "TeacherNotification",
+                    ToAddress = teacher.Email,
+                    Subject   = mailMessage.Subject,
+                    BookingId = booking.BookingId,
+                    Status    = "Sent",
+                    SentAt    = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send teacher notification email to {Email}", teacher.Email);
+                _context.EmailLogs.Add(new EmailLog
+                {
+                    EmailType    = "TeacherNotification",
+                    ToAddress    = teacher.Email,
+                    Subject      = mailMessage.Subject,
+                    BookingId    = booking.BookingId,
+                    Status       = "Failed",
+                    ErrorMessage = ex.Message,
+                    SentAt       = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
                 throw;
             }
         }
