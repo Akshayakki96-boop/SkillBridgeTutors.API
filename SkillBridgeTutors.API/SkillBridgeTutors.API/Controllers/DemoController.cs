@@ -150,13 +150,19 @@ namespace SkillBridgeTutors.API.Controllers
             // Run teacher assignment + emails in background (fire-and-forget)
             _ = Task.Run(async () =>
             {
+                try
+                {
                 // Create a new DI scope so we get a fresh ApplicationDbContext
                 await using var scope = _serviceScopeFactory.CreateAsyncScope();
                 var demoRepo     = scope.ServiceProvider.GetRequiredService<IDemoRepository>();
                 var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
                 var bgBooking = await demoRepo.GetBookingByIdAsync(bookingId);
-                if (bgBooking == null) return;
+                if (bgBooking == null)
+                {
+                    _logger.LogError("Background task: booking {BookingId} not found", bookingId);
+                    return;
+                }
 
                 try
                 {
@@ -182,6 +188,11 @@ namespace SkillBridgeTutors.API.Controllers
 
                 try { await emailService.SendDemoConfirmationAsync(bgBooking.Lead, bgBooking); }
                 catch (Exception ex) { _logger.LogError(ex, "Parent confirmation email failed for booking {BookingId}", bookingId); }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "FATAL: Background task crashed for booking {BookingId}", bookingId);
+                }
             });
 
             return Ok(response);

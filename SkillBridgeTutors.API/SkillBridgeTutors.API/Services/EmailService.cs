@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Mail;
-using SkillBridgeTutors.API.Data;
+using Microsoft.Data.SqlClient;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
 
@@ -10,13 +10,11 @@ namespace SkillBridgeTutors.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
-        private readonly ApplicationDbContext _context;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, ApplicationDbContext context)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
         {
             _configuration = configuration;
             _logger = logger;
-            _context = context;
         }
 
         public async Task SendDemoConfirmationAsync(Lead lead, DemoBooking booking)
@@ -234,37 +232,48 @@ namespace SkillBridgeTutors.API.Services
             };
             mailMessage.To.Add(lead.Email);
 
+            // --- Send email ---
+            string sendError = string.Empty;
             try
             {
                 await client.SendMailAsync(mailMessage);
                 _logger.LogInformation("Confirmation email sent to {Email}", lead.Email);
-                _context.EmailLogs.Add(new EmailLog
-                {
-                    EmailType = "ParentConfirmation",
-                    ToAddress = lead.Email,
-                    Subject   = emailSubject,
-                    BookingId = booking.BookingId,
-                    Status    = "Sent",
-                    SentAt    = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
+                sendError = ex.Message;
                 _logger.LogError(ex, "Failed to send confirmation email to {Email}", lead.Email);
-                _context.EmailLogs.Add(new EmailLog
-                {
-                    EmailType    = "ParentConfirmation",
-                    ToAddress    = lead.Email,
-                    Subject      = emailSubject,
-                    BookingId    = booking.BookingId,
-                    Status       = "Failed",
-                    ErrorMessage = ex.Message,
-                    SentAt       = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
-                throw;
             }
+
+            // --- Write log row via raw ADO.NET (bypasses EF tracking) ---
+            try
+            {
+                var connStr = _configuration.GetConnectionString("DefaultConnection")!;
+                await using var conn = new SqlConnection(connStr);
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId",       (object?)lead.LeadId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId",    (object?)booking.BookingId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail",      lead.Email);
+                cmd.Parameters.AddWithValue("@Subject",      emailSubject);
+                cmd.Parameters.AddWithValue("@EmailType",    "DemoConfirmation");
+                cmd.Parameters.AddWithValue("@Status",       string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt",       DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt",    DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync();
+                _logger.LogInformation("EmailLog written for booking {BookingId} status={Status}", booking.BookingId, string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(logEx, "Failed to write EmailLog for booking {BookingId}: {Msg}", booking.BookingId, logEx.Message);
+            }
+
+            if (!string.IsNullOrEmpty(sendError))
+                throw new InvalidOperationException(sendError);
         }
 
         public async Task SendTeacherNotificationAsync(Teacher teacher, Lead lead, DemoBooking booking)
@@ -334,37 +343,48 @@ namespace SkillBridgeTutors.API.Services
             };
             mailMessage.To.Add(teacher.Email);
 
+            // --- Send email ---
+            string sendError = string.Empty;
             try
             {
                 await client.SendMailAsync(mailMessage);
                 _logger.LogInformation("Teacher notification email sent to {Email}", teacher.Email);
-                _context.EmailLogs.Add(new EmailLog
-                {
-                    EmailType = "TeacherNotification",
-                    ToAddress = teacher.Email,
-                    Subject   = mailMessage.Subject,
-                    BookingId = booking.BookingId,
-                    Status    = "Sent",
-                    SentAt    = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
+                sendError = ex.Message;
                 _logger.LogError(ex, "Failed to send teacher notification email to {Email}", teacher.Email);
-                _context.EmailLogs.Add(new EmailLog
-                {
-                    EmailType    = "TeacherNotification",
-                    ToAddress    = teacher.Email,
-                    Subject      = mailMessage.Subject,
-                    BookingId    = booking.BookingId,
-                    Status       = "Failed",
-                    ErrorMessage = ex.Message,
-                    SentAt       = DateTime.UtcNow
-                });
-                await _context.SaveChangesAsync();
-                throw;
             }
+
+            // --- Write log row via raw ADO.NET (bypasses EF tracking) ---
+            try
+            {
+                var connStr = _configuration.GetConnectionString("DefaultConnection")!;
+                await using var conn = new SqlConnection(connStr);
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId",       (object?)lead.LeadId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId",    (object?)booking.BookingId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail",      teacher.Email);
+                cmd.Parameters.AddWithValue("@Subject",      mailMessage.Subject);
+                cmd.Parameters.AddWithValue("@EmailType",    "Other");
+                cmd.Parameters.AddWithValue("@Status",       string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt",       DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt",    DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync();
+                _logger.LogInformation("EmailLog written for booking {BookingId} status={Status}", booking.BookingId, string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(logEx, "Failed to write EmailLog for booking {BookingId}: {Msg}", booking.BookingId, logEx.Message);
+            }
+
+            if (!string.IsNullOrEmpty(sendError))
+                throw new InvalidOperationException(sendError);
         }
     }
 }
