@@ -241,8 +241,12 @@ namespace SkillBridgeTutors.API.Services
             }
             catch (Exception ex)
             {
-                sendError = ex.Message;
-                _logger.LogError(ex, "Failed to send confirmation email to {Email}", lead.Email);
+                // Capture full inner exception chain for diagnosis
+                var inner = ex;
+                var sb = new System.Text.StringBuilder();
+                while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
+                sendError = sb.ToString().Trim();
+                _logger.LogError(ex, "Failed to send confirmation email to {Email}: {FullError}", lead.Email, sendError);
             }
 
             // --- Write log row via raw ADO.NET (bypasses EF tracking) ---
@@ -352,8 +356,12 @@ namespace SkillBridgeTutors.API.Services
             }
             catch (Exception ex)
             {
-                sendError = ex.Message;
-                _logger.LogError(ex, "Failed to send teacher notification email to {Email}", teacher.Email);
+                // Capture full inner exception chain for diagnosis
+                var inner = ex;
+                var sb = new System.Text.StringBuilder();
+                while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
+                sendError = sb.ToString().Trim();
+                _logger.LogError(ex, "Failed to send teacher notification email to {Email}: {FullError}", teacher.Email, sendError);
             }
 
             // --- Write log row via raw ADO.NET (bypasses EF tracking) ---
