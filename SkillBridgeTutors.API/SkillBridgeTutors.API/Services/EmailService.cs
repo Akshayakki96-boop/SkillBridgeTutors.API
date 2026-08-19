@@ -1,6 +1,8 @@
 using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Data.SqlClient;
+using MimeKit;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
 
@@ -217,31 +219,25 @@ namespace SkillBridgeTutors.API.Services
 </body>
 </html>";
 
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(smtpUser!, "SkillBridge Tutors"),
-                Subject = emailSubject,
-                Body = emailBody,
-                IsBodyHtml = true
-            };
-            mailMessage.To.Add(lead.Email);
+            var mimeMessage = new MimeMessage();
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", smtpUser));
+            mimeMessage.To.Add(MailboxAddress.Parse(lead.Email));
+            mimeMessage.Subject = emailSubject;
+            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = emailBody };
 
             // --- Send email ---
             string sendError = string.Empty;
             try
             {
-                await client.SendMailAsync(mailMessage);
+                using var client = new MailKit.Net.Smtp.SmtpClient();
+                await client.ConnectAsync(smtpHost, 465, SecureSocketOptions.SslOnConnect);
+                await client.AuthenticateAsync(smtpUser, smtpPass);
+                await client.SendAsync(mimeMessage);
+                await client.DisconnectAsync(true);
                 _logger.LogInformation("Confirmation email sent to {Email}", lead.Email);
             }
             catch (Exception ex)
             {
-                // Capture full inner exception chain for diagnosis
                 var inner = ex;
                 var sb = new System.Text.StringBuilder();
                 while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
@@ -332,31 +328,26 @@ namespace SkillBridgeTutors.API.Services
 </body>
 </html>";
 
-            using var client = new SmtpClient(smtpHost, smtpPort)
-            {
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = true
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(fromEmail!),
-                Subject = $"📚 Demo Class Assigned – {lead.FullName} ({lead.Subject}) on {startTime}",
-                Body = body,
-                IsBodyHtml = true
-            };
-            mailMessage.To.Add(teacher.Email);
+            var teacherSubject = $"📚 Demo Class Assigned – {lead.FullName} ({lead.Subject}) on {startTime}";
+            var mimeMessage = new MimeMessage();
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", smtpUser));
+            mimeMessage.To.Add(MailboxAddress.Parse(teacher.Email));
+            mimeMessage.Subject = teacherSubject;
+            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
 
             // --- Send email ---
             string sendError = string.Empty;
             try
             {
-                await client.SendMailAsync(mailMessage);
+                using var client = new MailKit.Net.Smtp.SmtpClient();
+                await client.ConnectAsync(smtpHost, 465, SecureSocketOptions.SslOnConnect);
+                await client.AuthenticateAsync(smtpUser, smtpPass);
+                await client.SendAsync(mimeMessage);
+                await client.DisconnectAsync(true);
                 _logger.LogInformation("Teacher notification email sent to {Email}", teacher.Email);
             }
             catch (Exception ex)
             {
-                // Capture full inner exception chain for diagnosis
                 var inner = ex;
                 var sb = new System.Text.StringBuilder();
                 while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
@@ -377,7 +368,7 @@ namespace SkillBridgeTutors.API.Services
                 cmd.Parameters.AddWithValue("@LeadId",       (object?)lead.LeadId ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@BookingId",    (object?)booking.BookingId ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ToEmail",      teacher.Email);
-                cmd.Parameters.AddWithValue("@Subject",      mailMessage.Subject);
+                cmd.Parameters.AddWithValue("@Subject",      teacherSubject);
                 cmd.Parameters.AddWithValue("@EmailType",    "Other");
                 cmd.Parameters.AddWithValue("@Status",       string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
                 cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
