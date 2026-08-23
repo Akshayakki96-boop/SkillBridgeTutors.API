@@ -40,8 +40,13 @@ namespace SkillBridgeTutors.API.Services
                 retell_llm_dynamic_variables = new Dictionary<string, string>
                 {
                     { "customer_name", lead.FullName },
+                    { "parent_first_name", lead.ParentFirstName },
+                    { "parent_last_name", lead.ParentLastName },
                     { "customer_email", lead.Email },
                     { "customer_phone", lead.Phone },
+                    { "student_name", lead.StudentName },
+                    { "class_year", lead.ClassYear },
+                    { "subject", lead.Subject },
                     { "customer_query", lead.Query }
                 }
             };
