@@ -23,6 +23,28 @@ namespace SkillBridgeTutors.API.Repository
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<DemoSlot>> GetSlotsAsync(DateTime? fromUtc = null, DateTime? toUtc = null)
+        {
+            var query = _context.DemoSlots.AsQueryable();
+
+            if (fromUtc.HasValue)
+                query = query.Where(s => s.StartTime >= fromUtc.Value);
+
+            if (toUtc.HasValue)
+                query = query.Where(s => s.StartTime <= toUtc.Value);
+
+            return await query
+                .OrderBy(s => s.StartTime)
+                .ToListAsync();
+        }
+
+        public async Task<DemoSlot> CreateSlotAsync(DemoSlot slot)
+        {
+            _context.DemoSlots.Add(slot);
+            await _context.SaveChangesAsync();
+            return slot;
+        }
+
         public async Task<DemoSlot?> GetSlotByIdAsync(long slotId)
         {
             return await _context.DemoSlots.FindAsync(slotId);
@@ -40,7 +62,18 @@ namespace SkillBridgeTutors.API.Repository
             return await _context.DemoBookings
                 .Include(b => b.Lead)
                 .Include(b => b.DemoSlot)
+                .Include(b => b.Teacher)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
+        }
+
+        public async Task<IEnumerable<DemoBooking>> GetBookingsAsync()
+        {
+            return await _context.DemoBookings
+                .Include(b => b.Lead)
+                .Include(b => b.DemoSlot)
+                .Include(b => b.Teacher)
+                .OrderByDescending(b => b.BookedAt)
+                .ToListAsync();
         }
 
         public async Task UpdateBookingAsync(DemoBooking booking)

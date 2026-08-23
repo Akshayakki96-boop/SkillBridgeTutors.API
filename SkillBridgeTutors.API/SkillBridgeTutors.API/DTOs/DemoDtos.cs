@@ -65,4 +65,46 @@ namespace SkillBridgeTutors.API.DTOs
         public string Status { get; set; } = string.Empty;
         public DateTime BookedAt { get; set; }
     }
+
+    public class CreateDemoSlotDto
+    {
+        [Required]
+        public DateTime StartTime { get; set; }
+
+        [Required]
+        public DateTime EndTime { get; set; }
+
+        public bool IsAvailable { get; set; } = true;
+    }
+
+    public class UpdateSlotAvailabilityDto
+    {
+        [Required]
+        public bool IsAvailable { get; set; }
+    }
+
+    public class AdminDemoSlotDto
+    {
+        public long SlotId { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public bool IsAvailable { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class AdminDemoBookingDto
+    {
+        public long BookingId { get; set; }
+        public long LeadId { get; set; }
+        public string StudentName { get; set; } = string.Empty;
+        public string StudentEmail { get; set; } = string.Empty;
+        public string StudentPhone { get; set; } = string.Empty;
+        public string Subject { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? TeacherName { get; set; }
+        public string? MeetingLink { get; set; }
+        public DateTime BookedAt { get; set; }
+    }
 }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SkillBridgeTutors.API.Controllers
 {
@@ -50,6 +51,119 @@ namespace SkillBridgeTutors.API.Controllers
                 EndTime = s.EndTime,
                 FormattedSlot = $"{s.StartTime:dddd, dd MMMM yyyy} from {s.StartTime:HH:mm} to {s.EndTime:HH:mm} UTC"
             });
+            return Ok(result);
+        }
+
+        [HttpGet("admin/slots")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetSlots([FromQuery] DateTime? fromUtc, [FromQuery] DateTime? toUtc)
+        {
+            var slots = await _demoRepository.GetSlotsAsync(fromUtc, toUtc);
+            var result = slots.Select(s => new AdminDemoSlotDto
+            {
+                SlotId = s.SlotId,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                IsAvailable = s.IsAvailable,
+                CreatedAt = s.CreatedAt
+            });
+            return Ok(result);
+        }
+
+        [HttpPost("admin/slots")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateSlot([FromBody] CreateDemoSlotDto dto)
+        {
+            if (dto.EndTime <= dto.StartTime)
+                return BadRequest(new { message = "EndTime must be greater than StartTime." });
+
+            if (dto.StartTime <= DateTime.UtcNow)
+                return BadRequest(new { message = "Slot start time must be in the future (UTC)." });
+
+            var existing = await _demoRepository.GetSlotsAsync(dto.StartTime.AddHours(-4), dto.EndTime.AddHours(4));
+            var overlaps = existing.Any(s => dto.StartTime < s.EndTime && dto.EndTime > s.StartTime);
+            if (overlaps)
+                return Conflict(new { message = "Slot overlaps with an existing slot." });
+
+            var slot = new DemoSlot
+            {
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
+                IsAvailable = dto.IsAvailable
+            };
+
+            var created = await _demoRepository.CreateSlotAsync(slot);
+            return Ok(new AdminDemoSlotDto
+            {
+                SlotId = created.SlotId,
+                StartTime = created.StartTime,
+                EndTime = created.EndTime,
+                IsAvailable = created.IsAvailable,
+                CreatedAt = created.CreatedAt
+            });
+        }
+
+        [HttpPatch("admin/slots/{slotId:long}/availability")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateSlotAvailability(long slotId, [FromBody] UpdateSlotAvailabilityDto dto)
+        {
+            var slot = await _demoRepository.GetSlotByIdAsync(slotId);
+            if (slot == null)
+                return NotFound(new { message = "Slot not found." });
+
+            slot.IsAvailable = dto.IsAvailable;
+            await _demoRepository.UpdateSlotAsync(slot);
+
+            return Ok(new { message = "Slot availability updated.", slotId = slot.SlotId, isAvailable = slot.IsAvailable });
+        }
+
+        [HttpGet("admin/teachers/available")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAvailableTeacher([FromQuery] long slotId, [FromQuery] string subject)
+        {
+            if (slotId <= 0 || string.IsNullOrWhiteSpace(subject))
+                return BadRequest(new { message = "slotId and subject are required." });
+
+            var teacher = await _demoRepository.GetAvailableTeacherAsync(slotId, subject);
+            if (teacher == null)
+                return NotFound(new { message = "No teacher available for this slot and subject." });
+
+            return Ok(new TeacherResponseDto
+            {
+                TeacherId = teacher.TeacherId,
+                FullName = teacher.FullName,
+                Email = teacher.Email,
+                Subjects = teacher.Subjects,
+                IsActive = teacher.IsActive,
+                CreatedAt = teacher.CreatedAt
+            });
+        }
+
+        [HttpGet("admin/bookings")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetBookings([FromQuery] string? status)
+        {
+            var bookings = await _demoRepository.GetBookingsAsync();
+            var filtered = string.IsNullOrWhiteSpace(status)
+                ? bookings
+                : bookings.Where(b => b.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
+
+            var result = filtered.Select(b => new AdminDemoBookingDto
+            {
+                BookingId = b.BookingId,
+                LeadId = b.LeadId,
+                StudentName = b.Lead.FullName,
+                StudentEmail = b.Lead.Email,
+                StudentPhone = b.Lead.Phone,
+                Subject = b.Lead.Subject,
+                Status = b.Status,
+                StartTime = b.DemoSlot.StartTime,
+                EndTime = b.DemoSlot.EndTime,
+                TeacherName = b.Teacher?.FullName,
+                MeetingLink = b.MeetingLink,
+                BookedAt = b.BookedAt
+            });
+
             return Ok(result);
         }
 
