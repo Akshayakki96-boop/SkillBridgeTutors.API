@@ -30,6 +30,22 @@ namespace SkillBridgeTutors.API.Services
                 : "TBD";
             var meetingLink = booking.MeetingLink ?? "#";
 
+            var supportEmail = _configuration["Email:Support"] ?? "info@skillbridgetutors.com";
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"]?.TrimEnd('/');
+            var rescheduleLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
+                ? $"{frontendBaseUrl}/demo/manage?bookingId={booking.BookingId}&action=reschedule"
+                : BuildSupportMailto(
+                    supportEmail,
+                    $"Reschedule request - Booking #{booking.BookingId}",
+                    $"Hi SkillBridge Team,\n\nI want to reschedule my demo booking.\nBooking ID: {booking.BookingId}\nName: {lead.FullName}\nEmail: {lead.Email}\n\nPlease share available slots.\n");
+
+            var cancelLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
+                ? $"{frontendBaseUrl}/demo/manage?bookingId={booking.BookingId}&action=cancel"
+                : BuildSupportMailto(
+                    supportEmail,
+                    $"Cancel request - Booking #{booking.BookingId}",
+                    $"Hi SkillBridge Team,\n\nI want to cancel my demo booking.\nBooking ID: {booking.BookingId}\nName: {lead.FullName}\nEmail: {lead.Email}\n\nReason: ");
+
             var emailSubject = "🎓 Your Free Demo Class is Confirmed – SkillBridge Tutors";
 
             var emailBody = $@"
@@ -89,11 +105,19 @@ namespace SkillBridgeTutors.API.Services
                 style=""background:#f0f4ff;border-radius:10px;border-left:5px solid #1a73e8;overflow:hidden;"">
                 <tr>
                   <td style=""padding:24px 28px;"">
-                    <p style=""margin:0 0 16px;color:#1a73e8;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"">
+                    <p style=""margin:0 0 16px;color:#1a1a2e;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"">
                       📋 Booking Details
                     </p>
 
                     <table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                      <tr>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;"">
+                          <span style=""color:#888;font-size:13px;"">Booking ID</span>
+                        </td>
+                        <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;text-align:right;"">
+                          <strong style=""color:#1a1a2e;font-size:14px;"">#{booking.BookingId}</strong>
+                        </td>
+                      </tr>
                       <tr>
                         <td style=""padding:8px 0;border-bottom:1px solid #dce3f3;"">
                           <span style=""color:#888;font-size:13px;"">Subject</span>
@@ -173,13 +197,17 @@ namespace SkillBridgeTutors.API.Services
 
           <!-- Reschedule / Cancel -->
           <tr>
+            <td align=""center"" style=""padding:0 40px 8px;"">
+              <a href=""{rescheduleLink}"" style=""display:inline-block;background:#f4f7ff;color:#1a73e8;padding:12px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-right:8px;border:1px solid #d8e3ff;"">Reschedule Demo</a>
+              <a href=""{cancelLink}"" style=""display:inline-block;background:#fff2f2;color:#d32f2f;padding:12px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;border:1px solid #ffd2d2;"">Cancel Demo</a>
+            </td>
+          </tr>
+          <tr>
             <td style=""padding:0 40px 32px;"">
-              <p style=""margin:0;color:#777;font-size:13px;line-height:1.8;text-align:center;"">
-                Need to reschedule or cancel? Contact us at 
-                <a href=""mailto:info@skillbridgetutors.com"" style=""color:#1a73e8;text-decoration:none;"">
-                  info@skillbridgetutors.com
-                </a>
-                <br/>We are happy to help!
+              <p style=""margin:10px 0 0;color:#777;font-size:13px;line-height:1.8;text-align:center;"">
+                If links don't open, email us at
+                <a href=""mailto:{supportEmail}"" style=""color:#1a73e8;text-decoration:none;"">{supportEmail}</a>
+                and share your Booking ID <strong>#{booking.BookingId}</strong>.
               </p>
             </td>
           </tr>
@@ -200,8 +228,8 @@ namespace SkillBridgeTutors.API.Services
                   www.skillbridgetutors.com
                 </a>
                 &nbsp;|&nbsp;
-                <a href=""mailto:info@skillbridgetutors.com"" style=""color:#1a73e8;text-decoration:none;"">
-                  info@skillbridgetutors.com
+                <a href=""mailto:{supportEmail}"" style=""color:#1a73e8;text-decoration:none;"">
+                  {supportEmail}
                 </a>
               </p>
             </td>
@@ -372,6 +400,13 @@ namespace SkillBridgeTutors.API.Services
 
             if (!string.IsNullOrEmpty(sendError))
                 throw new InvalidOperationException(sendError);
+        }
+
+        private static string BuildSupportMailto(string supportEmail, string subject, string body)
+        {
+            var encodedSubject = Uri.EscapeDataString(subject);
+            var encodedBody = Uri.EscapeDataString(body);
+            return $"mailto:{supportEmail}?subject={encodedSubject}&body={encodedBody}";
         }
     }
 }
