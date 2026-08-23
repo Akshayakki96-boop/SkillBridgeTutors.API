@@ -173,11 +173,12 @@ namespace SkillBridgeTutors.API.Controllers
                         await demoRepo.UpdateBookingAsync(bgBooking);
                         _logger.LogInformation("Teacher {TeacherId} assigned to booking {BookingId}", teacher.TeacherId, bookingId);
 
-                        try { await emailService.SendTeacherNotificationAsync(teacher, bgBooking.Lead, bgBooking); }
+                        try 
+                            { await emailService.SendTeacherNotificationAsync(teacher, bgBooking.Lead, bgBooking); }
                         catch (Exception ex) { _logger.LogError(ex, "Teacher email failed for booking {BookingId}", bookingId); }
                     }
                     else
-                    {
+                   {
                         _logger.LogWarning("No available teacher for slot {SlotId} subject {Subject}", slotIdVal, leadSubject);
                     }
                 }

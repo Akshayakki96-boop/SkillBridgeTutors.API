@@ -35,6 +35,10 @@ builder.Services.AddScoped<ICallRecordRepository, CallRecordRepository>();
 
 // Services
 builder.Services.AddHttpClient<IRetellService, RetellService>();
+
+// Email provider - using Resend only
+builder.Services.AddHttpClient<IEmailProvider, ResendEmailProvider>();
+
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();

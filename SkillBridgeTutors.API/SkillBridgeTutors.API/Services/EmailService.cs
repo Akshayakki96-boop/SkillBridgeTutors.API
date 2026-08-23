@@ -1,6 +1,4 @@
 using System.Net;
-using MailKit.Net.Smtp;
-using MailKit.Security;
 using Microsoft.Data.SqlClient;
 using MimeKit;
 using SkillBridgeTutors.API.Interfaces;
@@ -12,20 +10,18 @@ namespace SkillBridgeTutors.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly IEmailProvider _emailProvider;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IEmailProvider emailProvider)
         {
             _configuration = configuration;
             _logger = logger;
+            _emailProvider = emailProvider;
         }
 
         public async Task SendDemoConfirmationAsync(Lead lead, DemoBooking booking)
         {
-            var smtpHost = _configuration["Email:SmtpHost"];
-            var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
-            var smtpUser = _configuration["Email:SmtpUser"];
-            var smtpPass = _configuration["Email:SmtpPass"];
-            var fromEmail = _configuration["Email:From"] ?? smtpUser;
+            var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";
 
             var slot = booking.DemoSlot;
             var startTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy") ?? "TBD";
@@ -220,20 +216,17 @@ namespace SkillBridgeTutors.API.Services
 </html>";
 
             var mimeMessage = new MimeMessage();
-            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", smtpUser));
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", fromEmail));
             mimeMessage.To.Add(MailboxAddress.Parse(lead.Email));
             mimeMessage.Subject = emailSubject;
             mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = emailBody };
 
             // --- Send email ---
             string sendError = string.Empty;
+            string providerMessageId = string.Empty;
             try
             {
-                using var client = new MailKit.Net.Smtp.SmtpClient();
-                await client.ConnectAsync(smtpHost, 465, SecureSocketOptions.SslOnConnect);
-                await client.AuthenticateAsync(smtpUser, smtpPass);
-                await client.SendAsync(mimeMessage);
-                await client.DisconnectAsync(true);
+                providerMessageId = await _emailProvider.SendEmailAsync(mimeMessage);
                 _logger.LogInformation("Confirmation email sent to {Email}", lead.Email);
             }
             catch (Exception ex)
@@ -253,17 +246,18 @@ namespace SkillBridgeTutors.API.Services
                 await conn.OpenAsync();
                 var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ErrorMessage, SentAt, CreatedAt)
-                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ErrorMessage, @SentAt, @CreatedAt)";
-                cmd.Parameters.AddWithValue("@LeadId",       (object?)lead.LeadId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@BookingId",    (object?)booking.BookingId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@ToEmail",      lead.Email);
-                cmd.Parameters.AddWithValue("@Subject",      emailSubject);
-                cmd.Parameters.AddWithValue("@EmailType",    "DemoConfirmation");
-                cmd.Parameters.AddWithValue("@Status",       string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
-                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
-                cmd.Parameters.AddWithValue("@SentAt",       DateTime.UtcNow);
-                cmd.Parameters.AddWithValue("@CreatedAt",    DateTime.UtcNow);
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ProviderMessageId, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ProviderMessageId, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId",              (object?)lead.LeadId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId",           (object?)booking.BookingId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail",             lead.Email);
+                cmd.Parameters.AddWithValue("@Subject",             emailSubject);
+                cmd.Parameters.AddWithValue("@EmailType",           "DemoConfirmation");
+                cmd.Parameters.AddWithValue("@Status",              string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ProviderMessageId",   string.IsNullOrEmpty(providerMessageId) ? DBNull.Value : (object)providerMessageId);
+                cmd.Parameters.AddWithValue("@ErrorMessage",        string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt",              DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt",           DateTime.UtcNow);
                 await cmd.ExecuteNonQueryAsync();
                 _logger.LogInformation("EmailLog written for booking {BookingId} status={Status}", booking.BookingId, string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
             }
@@ -278,11 +272,7 @@ namespace SkillBridgeTutors.API.Services
 
         public async Task SendTeacherNotificationAsync(Teacher teacher, Lead lead, DemoBooking booking)
         {
-            var smtpHost = _configuration["Email:SmtpHost"];
-            var smtpPort = int.Parse(_configuration["Email:SmtpPort"] ?? "587");
-            var smtpUser = _configuration["Email:SmtpUser"];
-            var smtpPass = _configuration["Email:SmtpPass"];
-            var fromEmail = _configuration["Email:From"] ?? smtpUser;
+            var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";
 
             var slot = booking.DemoSlot;
             var startTime = slot?.StartTime.ToString("dddd, dd MMMM yyyy") ?? "TBD";
@@ -330,20 +320,17 @@ namespace SkillBridgeTutors.API.Services
 
             var teacherSubject = $"📚 Demo Class Assigned – {lead.FullName} ({lead.Subject}) on {startTime}";
             var mimeMessage = new MimeMessage();
-            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", smtpUser));
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", fromEmail));
             mimeMessage.To.Add(MailboxAddress.Parse(teacher.Email));
             mimeMessage.Subject = teacherSubject;
             mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
 
             // --- Send email ---
             string sendError = string.Empty;
+            string providerMessageId = string.Empty;
             try
             {
-                using var client = new MailKit.Net.Smtp.SmtpClient();
-                await client.ConnectAsync(smtpHost, 465, SecureSocketOptions.SslOnConnect);
-                await client.AuthenticateAsync(smtpUser, smtpPass);
-                await client.SendAsync(mimeMessage);
-                await client.DisconnectAsync(true);
+                providerMessageId = await _emailProvider.SendEmailAsync(mimeMessage);
                 _logger.LogInformation("Teacher notification email sent to {Email}", teacher.Email);
             }
             catch (Exception ex)
@@ -363,17 +350,18 @@ namespace SkillBridgeTutors.API.Services
                 await conn.OpenAsync();
                 var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ErrorMessage, SentAt, CreatedAt)
-                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ErrorMessage, @SentAt, @CreatedAt)";
-                cmd.Parameters.AddWithValue("@LeadId",       (object?)lead.LeadId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@BookingId",    (object?)booking.BookingId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@ToEmail",      teacher.Email);
-                cmd.Parameters.AddWithValue("@Subject",      teacherSubject);
-                cmd.Parameters.AddWithValue("@EmailType",    "Other");
-                cmd.Parameters.AddWithValue("@Status",       string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
-                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
-                cmd.Parameters.AddWithValue("@SentAt",       DateTime.UtcNow);
-                cmd.Parameters.AddWithValue("@CreatedAt",    DateTime.UtcNow);
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ProviderMessageId, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ProviderMessageId, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId",              (object?)lead.LeadId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId",           (object?)booking.BookingId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail",             teacher.Email);
+                cmd.Parameters.AddWithValue("@Subject",             teacherSubject);
+                cmd.Parameters.AddWithValue("@EmailType",           "Other");
+                cmd.Parameters.AddWithValue("@Status",              string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ProviderMessageId",   string.IsNullOrEmpty(providerMessageId) ? DBNull.Value : (object)providerMessageId);
+                cmd.Parameters.AddWithValue("@ErrorMessage",        string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt",              DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt",           DateTime.UtcNow);
                 await cmd.ExecuteNonQueryAsync();
                 _logger.LogInformation("EmailLog written for booking {BookingId} status={Status}", booking.BookingId, string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
             }
