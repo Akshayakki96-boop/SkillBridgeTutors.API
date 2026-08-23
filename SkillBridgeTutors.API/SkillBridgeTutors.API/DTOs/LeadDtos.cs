@@ -5,7 +5,10 @@ namespace SkillBridgeTutors.API.DTOs
     public class CreateLeadDto
     {
         [Required]
-        public string FullName { get; set; } = string.Empty;
+        public string ParentFirstName { get; set; } = string.Empty;
+
+        [Required]
+        public string ParentLastName { get; set; } = string.Empty;
 
         [Required, EmailAddress]
         public string Email { get; set; } = string.Empty;
@@ -14,18 +17,27 @@ namespace SkillBridgeTutors.API.DTOs
         public string Phone { get; set; } = string.Empty;
 
         [Required]
-        public string Subject { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
 
         [Required]
+        public string ClassYear { get; set; } = string.Empty;
+
+        [Required]
+        public string Subject { get; set; } = string.Empty;
+
         public string Query { get; set; } = string.Empty;
     }
 
     public class LeadResponseDto
     {
         public long LeadId { get; set; }
+        public string ParentFirstName { get; set; } = string.Empty;
+        public string ParentLastName { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
+        public string ClassYear { get; set; } = string.Empty;
         public string Subject { get; set; } = string.Empty;
         public string Query { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;

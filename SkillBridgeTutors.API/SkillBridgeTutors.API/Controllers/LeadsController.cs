@@ -33,11 +33,17 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateLead([FromBody] CreateLeadDto dto)
         {
+            var fullName = $"{dto.ParentFirstName} {dto.ParentLastName}".Trim();
+
             var lead = new Lead
             {
-                FullName = dto.FullName,
+                ParentFirstName = dto.ParentFirstName,
+                ParentLastName = dto.ParentLastName,
+                FullName = fullName,
                 Email = dto.Email,
                 Phone = dto.Phone,
+                StudentName = dto.StudentName,
+                ClassYear = dto.ClassYear,
                 Subject = dto.Subject,
                 Query = dto.Query,
                 Status = "New",
@@ -99,9 +105,13 @@ namespace SkillBridgeTutors.API.Controllers
         private static LeadResponseDto MapToDto(Lead lead) => new()
         {
             LeadId = lead.LeadId,
+            ParentFirstName = lead.ParentFirstName,
+            ParentLastName = lead.ParentLastName,
             FullName = lead.FullName,
             Email = lead.Email,
             Phone = lead.Phone,
+            StudentName = lead.StudentName,
+            ClassYear = lead.ClassYear,
             Subject = lead.Subject,
             Query = lead.Query,
             Status = lead.Status,

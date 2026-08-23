@@ -9,6 +9,12 @@ namespace SkillBridgeTutors.API.Models
         [Column("LeadId")]
         public long LeadId { get; set; }
 
+        [Column("ParentFirstName")]
+        public string ParentFirstName { get; set; } = string.Empty;
+
+        [Column("ParentLastName")]
+        public string ParentLastName { get; set; } = string.Empty;
+
         [Column("FullName")]
         public string FullName { get; set; } = string.Empty;
 
@@ -17,6 +23,12 @@ namespace SkillBridgeTutors.API.Models
 
         [Column("Phone")]
         public string Phone { get; set; } = string.Empty;
+
+        [Column("StudentName")]
+        public string StudentName { get; set; } = string.Empty;
+
+        [Column("ClassYear")]
+        public string ClassYear { get; set; } = string.Empty;
 
         [Column("Subject")]
         public string Subject { get; set; } = string.Empty;
