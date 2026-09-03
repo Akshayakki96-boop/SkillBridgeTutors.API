@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using SkillBridgeTutors.API.Interfaces;
@@ -30,8 +31,8 @@ namespace SkillBridgeTutors.API.Services
 
             var payload = new
             {
-                from_number = fromNumber,
-                to_number = lead.Phone,
+                from_number = ToE164(fromNumber),
+                to_number = ToE164(lead.Phone),
                 agent_id = agentId,
                 metadata = new Dictionary<string, string>
                 {
@@ -59,13 +60,25 @@ namespace SkillBridgeTutors.API.Services
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Retell API error: {Error}", error);
-                throw new Exception($"Retell API call failed: {error}");
+                _logger.LogError("Retell API call failed. Status: {StatusCode}, Body: {Error}, Payload: {Payload}",
+                    response.StatusCode, error, json);
+                throw new Exception($"Retell API call failed ({(int)response.StatusCode} {response.StatusCode}): {error}");
             }
 
             var responseBody = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseBody);
             return doc.RootElement.GetProperty("call_id").GetString() ?? string.Empty;
+        }
+
+        private static string ToE164(string? number)
+        {
+            if (string.IsNullOrWhiteSpace(number))
+            {
+                return string.Empty;
+            }
+
+            var digits = new string(number.Where(char.IsDigit).ToArray());
+            return "+" + digits;
         }
     }
 }

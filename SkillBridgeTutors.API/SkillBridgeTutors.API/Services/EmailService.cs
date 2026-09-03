@@ -323,7 +323,7 @@ namespace SkillBridgeTutors.API.Services
       <p style=""color:#555;font-size:15px;"">You have been assigned a <strong>Free Demo Class</strong>. Please be available at the scheduled time.</p>
 
       <table width=""100%"" style=""background:#f0f4ff;border-left:5px solid #1a73e8;border-radius:8px;padding:20px;margin-top:16px;"">
-        <tr><td style=""padding:8px 0;""><strong>Student:</strong> {lead.FullName}</td></tr>
+        <tr><td style=""padding:8px 0;""><strong>Student:</strong> {lead.StudentName}</td></tr>
         <tr><td style=""padding:8px 0;""><strong>Subject:</strong> {lead.Subject}</td></tr>
         <tr><td style=""padding:8px 0;""><strong>Date:</strong> {startTime}</td></tr>
         <tr><td style=""padding:8px 0;""><strong>Time:</strong> {timeRange}</td></tr>
