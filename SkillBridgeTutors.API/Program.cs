@@ -35,6 +35,7 @@ builder.Services.AddScoped<ICallRecordRepository, CallRecordRepository>();
 
 // Services
 builder.Services.AddHttpClient<IRetellService, RetellService>();
+builder.Services.AddHttpClient<IPayPalService, PayPalService>();
 
 // Email provider - using Resend only
 builder.Services.AddHttpClient<IEmailProvider, ResendEmailProvider>();

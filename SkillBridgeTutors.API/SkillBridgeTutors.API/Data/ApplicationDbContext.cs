@@ -18,10 +18,26 @@ namespace SkillBridgeTutors.API.Data
         public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
         public DbSet<Teacher> Teachers => Set<Teacher>();
         public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
+        public DbSet<Student> Students => Set<Student>();
+        public DbSet<Payment> Payments => Set<Payment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Student>()
+                .HasIndex(s => s.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.Student)
+                .WithMany(s => s.Payments)
+                .HasForeignKey(p => p.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Payment>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(10,2)");
 
             modelBuilder.Entity<DemoBooking>()
                 .HasOne(b => b.Lead)
