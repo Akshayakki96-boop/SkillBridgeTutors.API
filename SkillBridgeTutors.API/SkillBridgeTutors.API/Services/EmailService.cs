@@ -304,7 +304,7 @@ namespace SkillBridgeTutors.API.Services
 
             var frontendBaseUrl = _configuration["Frontend:BaseUrl"]?.TrimEnd('/');
             var loginLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
-                ? $"{frontendBaseUrl}/login"
+                ? $"{frontendBaseUrl}/student/login"
                 : "#";
 
             var supportEmail = _configuration["Email:Support"] ?? "info@skillbridgetutors.com";
