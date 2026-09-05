@@ -118,8 +118,8 @@ namespace SkillBridgeTutors.API.Controllers
 
                 var frontendBaseUrl = _configuration["Frontend:BaseUrl"]?.TrimEnd('/');
                 var resetLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
-                    ? $"{frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}"
-                    : $"{Request.Scheme}://{Request.Host}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+                    ? $"{frontendBaseUrl}/student/reset-password?token={Uri.EscapeDataString(resetToken)}"
+                    : $"{Request.Scheme}://{Request.Host}/student/reset-password?token={Uri.EscapeDataString(resetToken)}";
 
                 try
                 {
