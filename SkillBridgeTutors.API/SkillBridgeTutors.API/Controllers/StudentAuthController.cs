@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
@@ -140,10 +142,27 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] StudentResetPasswordDto dto)
         {
-            if (!_tokenService.TryGetStudentIdFromPasswordResetToken(dto.Token, out var studentId))
-                return BadRequest(new { message = "Invalid or expired reset token." });
+            Student? student = null;
 
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                    ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (int.TryParse(studentIdClaim, out var authenticatedStudentId))
+                {
+                    student = await _context.Students.FirstOrDefaultAsync(s => s.Id == authenticatedStudentId);
+                }
+            }
+
+            if (student == null)
+            {
+                if (!_tokenService.TryGetStudentIdFromPasswordResetToken(dto.Token ?? string.Empty, out var studentId))
+                    return BadRequest(new { message = "Invalid or expired reset token." });
+
+                student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            }
+
             if (student == null || !student.IsActive)
                 return BadRequest(new { message = "Invalid reset request." });
 
