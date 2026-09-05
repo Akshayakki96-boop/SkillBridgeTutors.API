@@ -298,6 +298,240 @@ namespace SkillBridgeTutors.API.Services
                 throw new InvalidOperationException(sendError);
         }
 
+        public async Task SendStudentRegistrationAsync(Student student)
+        {
+            var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";
+
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"]?.TrimEnd('/');
+            var loginLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
+                ? $"{frontendBaseUrl}/login"
+                : "#";
+
+            var supportEmail = _configuration["Email:Support"] ?? "info@skillbridgetutors.com";
+
+            var subject = "Welcome to SkillBridge Tutors — Your account is ready";
+
+            var body = $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0""/>
+  <title>Welcome to SkillBridge Tutors</title>
+</head>
+<body style=""margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;"">
+
+  <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#f4f6f9;padding:40px 0;"">
+    <tr>
+      <td align=""center"">
+        <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);"">
+          <tr>
+            <td style=""background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:40px 40px 30px;text-align:center;"">
+              <h1 style=""margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;"">SkillBridge Tutors</h1>
+              <p style=""margin:8px 0 0;color:#bbdefb;font-size:14px;letter-spacing:2px;text-transform:uppercase;"">Welcome to SkillBridge</p>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:28px 40px 0;"">
+              <h2 style=""margin:0;color:#1a1a2e;font-size:22px;font-weight:600;"">Hello, {student.FullName} 👋</h2>
+              <p style=""margin:12px 0 0;color:#555;font-size:15px;line-height:1.7;"">Your student account has been created. Use the link below to login.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:20px 40px;"">
+              <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f0f4ff;border-radius:10px;border-left:5px solid #1a73e8;overflow:hidden;"">
+                <tr>
+                  <td style=""padding:16px 20px;"">
+                    <p style=""margin:0;color:#888;font-size:13px;""><strong>Login Email:</strong> {student.Email}</p>
+                    <p style=""margin:6px 0 0;color:#888;font-size:13px;""><strong>Phone:</strong> {student.Phone}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align=""center"" style=""padding:0 40px 32px;"">
+              <a href=""{loginLink}""
+                style=""display:inline-block;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:50px;font-size:15px;font-weight:600;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(26,115,232,0.4);"">
+                🔐 &nbsp; Login to your account
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:0 40px 32px;"">
+              <p style=""margin:10px 0 0;color:#777;font-size:13px;line-height:1.8;text-align:center;"">
+                If you forgot your password, use the Forgot Password flow on the login page to reset it. For assistance, email us at
+                <a href=""mailto:{supportEmail}"" style=""color:#1a73e8;text-decoration:none;"">{supportEmail}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:24px 40px;text-align:center;"">
+              <p style=""margin:0;color:#aaa;font-size:12px;line-height:1.8;"">© SkillBridge Tutors. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
+
+            var mimeMessage = new MimeMessage();
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", fromEmail));
+            mimeMessage.To.Add(MailboxAddress.Parse(student.Email));
+            mimeMessage.Subject = subject;
+            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
+
+            string sendError = string.Empty;
+            string providerMessageId = string.Empty;
+            try
+            {
+                providerMessageId = await _emailProvider.SendEmailAsync(mimeMessage);
+                _logger.LogInformation("Student registration email sent to {Email}", student.Email);
+            }
+            catch (Exception ex)
+            {
+                var inner = ex;
+                var sb = new System.Text.StringBuilder();
+                while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
+                sendError = sb.ToString().Trim();
+                _logger.LogError(ex, "Failed to send registration email to {Email}: {FullError}", student.Email, sendError);
+            }
+
+            // Log to EmailLogs table
+            try
+            {
+                var connStr = _configuration.GetConnectionString("DefaultConnection")!;
+                await using var conn = new SqlConnection(connStr);
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ProviderMessageId, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ProviderMessageId, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId", DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId", DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail", student.Email);
+                cmd.Parameters.AddWithValue("@Subject", subject);
+                cmd.Parameters.AddWithValue("@EmailType", "StudentRegistration");
+                cmd.Parameters.AddWithValue("@Status", string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ProviderMessageId", string.IsNullOrEmpty(providerMessageId) ? DBNull.Value : (object)providerMessageId);
+                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt", DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync();
+                _logger.LogInformation("EmailLog written for student {Email} status={Status}", student.Email, string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(logEx, "Failed to write EmailLog for student {Email}: {Msg}", student.Email, logEx.Message);
+            }
+
+            if (!string.IsNullOrEmpty(sendError))
+                throw new InvalidOperationException(sendError);
+        }
+
+        public async Task SendStudentPasswordResetAsync(Student student, string resetLink)
+        {
+            var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";
+            var supportEmail = _configuration["Email:Support"] ?? "info@skillbridgetutors.com";
+            var subject = "Reset your SkillBridge Tutors password";
+
+            var body = $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"" />
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0""/>
+  <title>Password Reset</title>
+</head>
+<body style=""margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;"">
+  <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background-color:#f4f6f9;padding:40px 0;"">
+    <tr>
+      <td align=""center"">
+        <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);"">
+          <tr>
+            <td style=""background:linear-gradient(135deg,#1a73e8,#0d47a1);padding:40px 40px 30px;text-align:center;"">
+              <h1 style=""margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;"">SkillBridge Tutors</h1>
+              <p style=""margin:8px 0 0;color:#bbdefb;font-size:14px;letter-spacing:2px;text-transform:uppercase;"">Password reset request</p>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:28px 40px 0;"">
+              <h2 style=""margin:0;color:#1a1a2e;font-size:22px;font-weight:600;"">Hello, {student.FullName} 👋</h2>
+              <p style=""margin:12px 0 0;color:#555;font-size:15px;line-height:1.7;"">We received a request to reset your password. Click the button below. This link expires in 30 minutes.</p>
+            </td>
+          </tr>
+          <tr>
+            <td align=""center"" style=""padding:24px 40px 32px;"">
+              <a href=""{resetLink}""
+                 style=""display:inline-block;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#ffffff;text-decoration:none;padding:14px 40px;border-radius:50px;font-size:15px;font-weight:600;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(26,115,232,0.4);"">
+                Reset Password
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style=""padding:0 40px 32px;"">
+              <p style=""margin:0;color:#777;font-size:13px;line-height:1.8;text-align:center;"">If you did not request this, please ignore this email. Need help? Contact <a href=""mailto:{supportEmail}"" style=""color:#1a73e8;text-decoration:none;"">{supportEmail}</a>.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
+
+            var mimeMessage = new MimeMessage();
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", fromEmail));
+            mimeMessage.To.Add(MailboxAddress.Parse(student.Email));
+            mimeMessage.Subject = subject;
+            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = body };
+
+            string sendError = string.Empty;
+            string providerMessageId = string.Empty;
+            try
+            {
+                providerMessageId = await _emailProvider.SendEmailAsync(mimeMessage);
+                _logger.LogInformation("Student password reset email sent to {Email}", student.Email);
+            }
+            catch (Exception ex)
+            {
+                var inner = ex;
+                var sb = new System.Text.StringBuilder();
+                while (inner != null) { sb.AppendLine(inner.Message); inner = inner.InnerException; }
+                sendError = sb.ToString().Trim();
+                _logger.LogError(ex, "Failed to send student reset email to {Email}: {FullError}", student.Email, sendError);
+            }
+
+            try
+            {
+                var connStr = _configuration.GetConnectionString("DefaultConnection")!;
+                await using var conn = new SqlConnection(connStr);
+                await conn.OpenAsync();
+                var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    INSERT INTO EmailLogs (LeadId, BookingId, ToEmail, Subject, EmailType, Status, ProviderMessageId, ErrorMessage, SentAt, CreatedAt)
+                    VALUES (@LeadId, @BookingId, @ToEmail, @Subject, @EmailType, @Status, @ProviderMessageId, @ErrorMessage, @SentAt, @CreatedAt)";
+                cmd.Parameters.AddWithValue("@LeadId", DBNull.Value);
+                cmd.Parameters.AddWithValue("@BookingId", DBNull.Value);
+                cmd.Parameters.AddWithValue("@ToEmail", student.Email);
+                cmd.Parameters.AddWithValue("@Subject", subject);
+                cmd.Parameters.AddWithValue("@EmailType", "StudentPasswordReset");
+                cmd.Parameters.AddWithValue("@Status", string.IsNullOrEmpty(sendError) ? "Sent" : "Failed");
+                cmd.Parameters.AddWithValue("@ProviderMessageId", string.IsNullOrEmpty(providerMessageId) ? DBNull.Value : (object)providerMessageId);
+                cmd.Parameters.AddWithValue("@ErrorMessage", string.IsNullOrEmpty(sendError) ? DBNull.Value : (object)sendError);
+                cmd.Parameters.AddWithValue("@SentAt", DateTime.UtcNow);
+                cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(logEx, "Failed to write EmailLog for student reset email {Email}: {Msg}", student.Email, logEx.Message);
+            }
+
+            if (!string.IsNullOrEmpty(sendError))
+                throw new InvalidOperationException(sendError);
+        }
+
         public async Task SendTeacherNotificationAsync(Teacher teacher, Lead lead, DemoBooking booking)
         {
             var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";

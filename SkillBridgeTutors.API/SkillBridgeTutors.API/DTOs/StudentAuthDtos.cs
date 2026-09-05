@@ -32,6 +32,21 @@ namespace SkillBridgeTutors.API.DTOs
         public string Password { get; set; } = string.Empty;
     }
 
+    public class StudentForgotPasswordDto
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class StudentResetPasswordDto
+    {
+        [Required]
+        public string Token { get; set; } = string.Empty;
+
+        [Required, MinLength(6)]
+        public string NewPassword { get; set; } = string.Empty;
+    }
+
     public class StudentAuthResponseDto
     {
         public string Token { get; set; } = string.Empty;

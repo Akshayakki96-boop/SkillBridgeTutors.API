@@ -6,5 +6,7 @@ namespace SkillBridgeTutors.API.Interfaces
     {
         string GenerateToken(AdminUser user);
         string GenerateToken(Student student);
+        string GenerateStudentPasswordResetToken(Student student, int expiresInMinutes = 30);
+        bool TryGetStudentIdFromPasswordResetToken(string token, out int studentId);
     }
 }

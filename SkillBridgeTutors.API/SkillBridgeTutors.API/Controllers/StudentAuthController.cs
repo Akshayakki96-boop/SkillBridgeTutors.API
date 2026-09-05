@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
@@ -13,11 +14,19 @@ namespace SkillBridgeTutors.API.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ITokenService _tokenService;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public StudentAuthController(ApplicationDbContext context, ITokenService tokenService)
+        public StudentAuthController(
+            ApplicationDbContext context,
+            ITokenService tokenService,
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _tokenService = tokenService;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -49,6 +58,16 @@ namespace SkillBridgeTutors.API.Controllers
             await _context.SaveChangesAsync();
 
             var token = _tokenService.GenerateToken(student);
+
+            // Send welcome email with login link. Do not fail registration if email sending fails.
+            try
+            {
+                await _emailService.SendStudentRegistrationAsync(student);
+            }
+            catch
+            {
+                // EmailService already logs errors. Swallow to avoid blocking registration.
+            }
 
             return CreatedAtAction(nameof(Register), new StudentAuthResponseDto
             {
@@ -83,6 +102,55 @@ namespace SkillBridgeTutors.API.Controllers
                 FullName = student.FullName,
                 ExpiresAt = DateTime.UtcNow.AddHours(12)
             });
+        }
+
+        /// <summary>
+        /// Sends password reset link to student email if account exists.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] StudentForgotPasswordDto dto)
+        {
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Email == dto.Email);
+
+            if (student != null && student.IsActive)
+            {
+                var resetToken = _tokenService.GenerateStudentPasswordResetToken(student);
+
+                var frontendBaseUrl = _configuration["Frontend:BaseUrl"]?.TrimEnd('/');
+                var resetLink = !string.IsNullOrWhiteSpace(frontendBaseUrl)
+                    ? $"{frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(resetToken)}"
+                    : $"{Request.Scheme}://{Request.Host}/reset-password?token={Uri.EscapeDataString(resetToken)}";
+
+                try
+                {
+                    await _emailService.SendStudentPasswordResetAsync(student, resetLink);
+                }
+                catch
+                {
+                    // Email errors are logged in EmailService.
+                }
+            }
+
+            return Ok(new { message = "If an account exists with this email, a reset link has been sent." });
+        }
+
+        /// <summary>
+        /// Resets student password using a valid reset token.
+        /// </summary>
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] StudentResetPasswordDto dto)
+        {
+            if (!_tokenService.TryGetStudentIdFromPasswordResetToken(dto.Token, out var studentId))
+                return BadRequest(new { message = "Invalid or expired reset token." });
+
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            if (student == null || !student.IsActive)
+                return BadRequest(new { message = "Invalid reset request." });
+
+            student.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password has been reset successfully." });
         }
     }
 }
