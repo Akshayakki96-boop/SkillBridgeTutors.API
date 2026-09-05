@@ -109,7 +109,9 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://skillbridgetutors.com",
-            "https://www.skillbridgetutors.com")
+            "https://www.skillbridgetutors.com",
+            "http://localhost:3000",
+            "https://localhost:3000")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
