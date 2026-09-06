@@ -26,6 +26,9 @@ namespace SkillBridgeTutors.API.DTOs
         public string Subject { get; set; } = string.Empty;
 
         public string Query { get; set; } = string.Empty;
+
+        [Required]
+        public string TurnstileToken { get; set; } = string.Empty;
     }
 
     public class LeadResponseDto

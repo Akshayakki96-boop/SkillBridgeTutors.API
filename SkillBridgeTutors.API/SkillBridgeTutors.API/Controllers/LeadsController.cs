@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
@@ -13,17 +14,23 @@ namespace SkillBridgeTutors.API.Controllers
         private readonly ILeadRepository _leadRepository;
         private readonly IRetellService _retellService;
         private readonly ICallRecordRepository _callRecordRepository;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<LeadsController> _logger;
 
         public LeadsController(
             ILeadRepository leadRepository,
             IRetellService retellService,
             ICallRecordRepository callRecordRepository,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration,
             ILogger<LeadsController> logger)
         {
             _leadRepository = leadRepository;
             _retellService = retellService;
             _callRecordRepository = callRecordRepository;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -33,6 +40,40 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateLead([FromBody] CreateLeadDto dto)
         {
+            var turnstileSecretKey = _configuration["TURNSTILE_SECRET_KEY"];
+            if (string.IsNullOrWhiteSpace(turnstileSecretKey))
+            {
+                _logger.LogError("Turnstile secret key is not configured.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Security verification is unavailable." });
+            }
+
+            var httpClient = _httpClientFactory.CreateClient();
+            var verificationRequest = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["secret"] = turnstileSecretKey,
+                ["response"] = dto.TurnstileToken,
+                ["remoteip"] = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty
+            });
+
+            var verificationResponse = await httpClient.PostAsync("https://challenges.cloudflare.com/turnstile/v0/siteverify", verificationRequest);
+            var verificationBody = await verificationResponse.Content.ReadAsStringAsync();
+
+            if (!verificationResponse.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Turnstile verification HTTP failure. Status: {StatusCode}, Body: {Body}", verificationResponse.StatusCode, verificationBody);
+                return BadRequest(new { message = "Security verification failed. Please try again." });
+            }
+
+            using var verificationDocument = JsonDocument.Parse(verificationBody);
+            var isVerified = verificationDocument.RootElement.TryGetProperty("success", out var successProperty)
+                && successProperty.GetBoolean();
+
+            if (!isVerified)
+            {
+                _logger.LogInformation("Turnstile verification failed for email {Email}", dto.Email);
+                return BadRequest(new { message = "Security verification failed. Please try again." });
+            }
+
             var fullName = $"{dto.ParentFirstName} {dto.ParentLastName}".Trim();
 
             var lead = new Lead
