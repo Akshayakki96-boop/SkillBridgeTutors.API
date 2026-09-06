@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SkillBridgeTutors.API.Data;
@@ -15,17 +16,20 @@ namespace SkillBridgeTutors.API.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IPayPalService _payPalService;
+        private readonly IEmailService _emailService;
 
-        public PaymentsController(ApplicationDbContext context, IPayPalService payPalService)
+        public PaymentsController(ApplicationDbContext context, IPayPalService payPalService, IEmailService emailService)
         {
             _context = context;
             _payPalService = payPalService;
+            _emailService = emailService;
         }
 
         /// <summary>
         /// Create a PayPal order for a student payment. Returns an approval URL to redirect the payer to.
         /// </summary>
         [HttpPost("create-order")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateOrder([FromBody] CreatePaymentOrderDto dto)
         {
             var studentExists = await _context.Students.AnyAsync(s => s.Id == dto.StudentId);
@@ -58,9 +62,12 @@ namespace SkillBridgeTutors.API.Controllers
         /// Capture a previously approved PayPal order to finalize the payment.
         /// </summary>
         [HttpPost("capture")]
+        [AllowAnonymous]
         public async Task<IActionResult> Capture([FromBody] CapturePaymentDto dto)
         {
-            var payment = await _context.Payments.FirstOrDefaultAsync(p => p.PayPalOrderId == dto.OrderId);
+            var payment = await _context.Payments
+                .Include(p => p.Student)
+                .FirstOrDefaultAsync(p => p.PayPalOrderId == dto.OrderId);
             if (payment == null)
                 return NotFound(new { message = "Payment not found." });
 
@@ -70,7 +77,23 @@ namespace SkillBridgeTutors.API.Controllers
             payment.Status = result.Status == "COMPLETED" ? PaymentStatus.Completed : PaymentStatus.Failed;
             payment.CompletedAt = payment.Status == PaymentStatus.Completed ? DateTime.UtcNow : null;
 
+            if (payment.Status == PaymentStatus.Completed && payment.Student != null && !payment.Student.IsActive)
+            {
+                payment.Student.IsActive = true;
+            }
+
             await _context.SaveChangesAsync();
+
+            if (payment.Status == PaymentStatus.Completed && payment.Student != null)
+            {
+                try
+                {
+                    await _emailService.SendStudentRegistrationAsync(payment.Student);
+                }
+                catch
+                {
+                }
+            }
 
             return Ok(new PaymentResponseDto
             {

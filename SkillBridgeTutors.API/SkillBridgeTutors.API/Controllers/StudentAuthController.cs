@@ -53,31 +53,21 @@ namespace SkillBridgeTutors.API.Controllers
                 ParentLastName = dto.ParentLastName,
                 ClassYear = dto.ClassYear,
                 Subject = dto.Subject,
-                Address = dto.Address
+                Address = dto.Address,
+                IsActive = false
             };
 
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
-            var token = _tokenService.GenerateToken(student);
-
-            // Send welcome email with login link. Do not fail registration if email sending fails.
-            try
-            {
-                await _emailService.SendStudentRegistrationAsync(student);
-            }
-            catch
-            {
-                // EmailService already logs errors. Swallow to avoid blocking registration.
-            }
-
             return CreatedAtAction(nameof(Register), new StudentAuthResponseDto
             {
-                Token = token,
                 StudentId = student.Id,
                 Email = student.Email,
                 FullName = student.FullName,
-                ExpiresAt = DateTime.UtcNow.AddHours(12)
+                ExpiresAt = null,
+                PaymentRequired = true,
+                PaymentCompleted = false
             });
         }
 
@@ -92,7 +82,7 @@ namespace SkillBridgeTutors.API.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
 
             if (!student.IsActive)
-                return Unauthorized(new { message = "This account has been deactivated." });
+                return Unauthorized(new { message = "Please complete payment to activate your account." });
 
             var token = _tokenService.GenerateToken(student);
 
@@ -102,7 +92,9 @@ namespace SkillBridgeTutors.API.Controllers
                 StudentId = student.Id,
                 Email = student.Email,
                 FullName = student.FullName,
-                ExpiresAt = DateTime.UtcNow.AddHours(12)
+                ExpiresAt = DateTime.UtcNow.AddHours(12),
+                PaymentRequired = true,
+                PaymentCompleted = true
             });
         }
 
