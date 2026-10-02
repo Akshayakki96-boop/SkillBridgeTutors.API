@@ -14,6 +14,7 @@ namespace SkillBridgeTutors.API.DTOs
         public string Email { get; set; } = string.Empty;
         public string Subjects { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
+        public string? Password { get; set; } // Optional - to update password
     }
 
     public class TeacherResponseDto

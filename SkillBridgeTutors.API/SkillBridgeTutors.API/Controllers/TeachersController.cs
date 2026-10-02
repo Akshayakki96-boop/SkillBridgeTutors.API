@@ -107,6 +107,12 @@ namespace SkillBridgeTutors.API.Controllers
             teacher.Subjects = dto.Subjects;
             teacher.IsActive = dto.IsActive;
 
+            // If password is provided, hash and update it
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                teacher.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            }
+
             await _teacherRepository.UpdateAsync(teacher);
             _logger.LogInformation("Teacher updated — Id: {TeacherId}", id);
 
