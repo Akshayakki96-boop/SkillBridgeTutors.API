@@ -4,6 +4,7 @@ namespace SkillBridgeTutors.API.DTOs
     {
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
         public string Subjects { get; set; } = string.Empty; // Comma-separated e.g. "Math,Science"
         public string? Password { get; set; } // Optional - admin can set during creation
     }
@@ -12,6 +13,7 @@ namespace SkillBridgeTutors.API.DTOs
     {
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
         public string Subjects { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public string? Password { get; set; } // Optional - to update password
@@ -22,6 +24,7 @@ namespace SkillBridgeTutors.API.DTOs
         public long TeacherId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
         public string Subjects { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -46,6 +49,7 @@ namespace SkillBridgeTutors.API.DTOs
     {
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
         public string Subjects { get; set; } = string.Empty; // Comma-separated
         public string? Message { get; set; } // Optional message from applicant
         public string? QualificationDetails { get; set; } // Optional qualifications

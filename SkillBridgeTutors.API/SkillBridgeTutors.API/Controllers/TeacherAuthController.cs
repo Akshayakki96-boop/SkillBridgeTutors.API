@@ -75,6 +75,7 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 FullName = dto.FullName,
                 Email = dto.Email,
+                Phone = dto.Phone,
                 Subjects = dto.Subjects,
                 PasswordHash = null, // No password yet - admin will set it
                 IsActive = false // Not active until approved by admin
@@ -83,13 +84,14 @@ namespace SkillBridgeTutors.API.Controllers
             await _context.Teachers.AddAsync(teacher);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Teacher application submitted — Email: {Email} Name: {FullName}", dto.Email, dto.FullName);
+            _logger.LogInformation("Teacher application submitted — Email: {Email} Name: {FullName} Phone: {Phone}", dto.Email, dto.FullName, dto.Phone);
 
             return CreatedAtAction(nameof(Login), new
             {
                 message = "Application submitted successfully. Our team will review and contact you soon.",
                 teacherId = teacher.TeacherId,
-                email = teacher.Email
+                email = teacher.Email,
+                phone = teacher.Phone
             });
         }
     }

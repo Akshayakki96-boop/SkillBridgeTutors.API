@@ -32,6 +32,7 @@ namespace SkillBridgeTutors.API.Controllers
                 TeacherId = t.TeacherId,
                 FullName  = t.FullName,
                 Email     = t.Email,
+                Phone     = t.Phone,
                 Subjects  = t.Subjects,
                 IsActive  = t.IsActive,
                 CreatedAt = t.CreatedAt
@@ -53,6 +54,7 @@ namespace SkillBridgeTutors.API.Controllers
                 TeacherId = teacher.TeacherId,
                 FullName  = teacher.FullName,
                 Email     = teacher.Email,
+                Phone     = teacher.Phone,
                 Subjects  = teacher.Subjects,
                 IsActive  = teacher.IsActive,
                 CreatedAt = teacher.CreatedAt
@@ -69,6 +71,7 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 FullName = dto.FullName,
                 Email    = dto.Email,
+                Phone    = dto.Phone,
                 Subjects = dto.Subjects,
                 IsActive = true
             };
@@ -87,6 +90,7 @@ namespace SkillBridgeTutors.API.Controllers
                 TeacherId = created.TeacherId,
                 FullName  = created.FullName,
                 Email     = created.Email,
+                Phone     = created.Phone,
                 Subjects  = created.Subjects,
                 IsActive  = created.IsActive,
                 CreatedAt = created.CreatedAt
@@ -104,6 +108,7 @@ namespace SkillBridgeTutors.API.Controllers
 
             teacher.FullName = dto.FullName;
             teacher.Email    = dto.Email;
+            teacher.Phone    = dto.Phone;
             teacher.Subjects = dto.Subjects;
             teacher.IsActive = dto.IsActive;
 
@@ -121,6 +126,7 @@ namespace SkillBridgeTutors.API.Controllers
                 TeacherId = teacher.TeacherId,
                 FullName  = teacher.FullName,
                 Email     = teacher.Email,
+                Phone     = teacher.Phone,
                 Subjects  = teacher.Subjects,
                 IsActive  = teacher.IsActive,
                 CreatedAt = teacher.CreatedAt

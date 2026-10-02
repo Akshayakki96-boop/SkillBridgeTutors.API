@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SkillBridgeTutors.API.Models
@@ -14,6 +15,9 @@ namespace SkillBridgeTutors.API.Models
 
         [Column("Email")]
         public string Email { get; set; } = string.Empty;
+
+        [Column("Phone")]
+        public string? Phone { get; set; }
 
         [Column("Subjects")]
         public string Subjects { get; set; } = string.Empty; // Comma-separated e.g. "Math,Science"
