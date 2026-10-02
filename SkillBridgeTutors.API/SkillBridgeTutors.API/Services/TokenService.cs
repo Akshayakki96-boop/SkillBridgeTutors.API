@@ -72,6 +72,34 @@ namespace SkillBridgeTutors.API.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        public string GenerateToken(Teacher teacher)
+        {
+            var jwtKey = _configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("JWT Key is not configured.");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, teacher.TeacherId.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, teacher.Email),
+                new Claim(JwtRegisteredClaimNames.Name, teacher.FullName),
+                new Claim(ClaimTypes.Role, "Teacher"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(12),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
         public string GenerateStudentPasswordResetToken(Student student, int expiresInMinutes = 30)
         {
             var jwtKey = _configuration["Jwt:Key"]

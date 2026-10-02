@@ -18,6 +18,9 @@ namespace SkillBridgeTutors.API.Models
         [Column("Subjects")]
         public string Subjects { get; set; } = string.Empty; // Comma-separated e.g. "Math,Science"
 
+        [Column("PasswordHash")]
+        public string? PasswordHash { get; set; }
+
         [Column("IsActive")]
         public bool IsActive { get; set; } = true;
 

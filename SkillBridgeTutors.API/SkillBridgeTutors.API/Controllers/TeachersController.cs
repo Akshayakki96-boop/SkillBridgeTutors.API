@@ -73,6 +73,12 @@ namespace SkillBridgeTutors.API.Controllers
                 IsActive = true
             };
 
+            // If password is provided, hash it
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                teacher.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            }
+
             var created = await _teacherRepository.CreateAsync(teacher);
             _logger.LogInformation("Teacher created — Id: {TeacherId} Name: {Name}", created.TeacherId, created.FullName);
 
