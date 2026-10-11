@@ -152,7 +152,7 @@ namespace SkillBridgeTutors.API.Controllers
             {
                 BookingId = b.BookingId,
                 LeadId = b.LeadId,
-                StudentName = b.Lead.FullName,
+                StudentName = b.Lead.StudentName,
                 StudentEmail = b.Lead.Email,
                 StudentPhone = b.Lead.Phone,
                 Subject = b.Lead.Subject,

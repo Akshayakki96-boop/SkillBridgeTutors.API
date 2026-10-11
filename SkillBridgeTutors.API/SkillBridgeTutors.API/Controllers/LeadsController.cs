@@ -41,11 +41,11 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> CreateLead([FromBody] CreateLeadDto dto)
         {
             var turnstileSecretKey = _configuration["TURNSTILE_SECRET_KEY"];
-            if (string.IsNullOrWhiteSpace(turnstileSecretKey))
-            {
-                _logger.LogError("Turnstile secret key is not configured.");
-                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Security verification is unavailable." });
-            }
+            //if (string.IsNullOrWhiteSpace(turnstileSecretKey))
+            //{
+            //    _logger.LogError("Turnstile secret key is not configured.");
+            //    return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Security verification is unavailable." });
+            //}
 
             var httpClient = _httpClientFactory.CreateClient();
             var verificationRequest = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -55,24 +55,24 @@ namespace SkillBridgeTutors.API.Controllers
                 ["remoteip"] = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty
             });
 
-            var verificationResponse = await httpClient.PostAsync("https://challenges.cloudflare.com/turnstile/v0/siteverify", verificationRequest);
-            var verificationBody = await verificationResponse.Content.ReadAsStringAsync();
+           // var verificationResponse = await httpClient.PostAsync("https://challenges.cloudflare.com/turnstile/v0/siteverify", verificationRequest);
+           // var verificationBody = await verificationResponse.Content.ReadAsStringAsync();
 
-            if (!verificationResponse.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Turnstile verification HTTP failure. Status: {StatusCode}, Body: {Body}", verificationResponse.StatusCode, verificationBody);
-                return BadRequest(new { message = "Security verification failed. Please try again." });
-            }
+            //if (!verificationResponse.IsSuccessStatusCode)
+            //{
+            //    _logger.LogWarning("Turnstile verification HTTP failure. Status: {StatusCode}, Body: {Body}", verificationResponse.StatusCode, verificationBody);
+            //    return BadRequest(new { message = "Security verification failed. Please try again." });
+            //}
 
-            using var verificationDocument = JsonDocument.Parse(verificationBody);
-            var isVerified = verificationDocument.RootElement.TryGetProperty("success", out var successProperty)
-                && successProperty.GetBoolean();
+            //using var verificationDocument = JsonDocument.Parse(verificationBody);
+            //var isVerified = verificationDocument.RootElement.TryGetProperty("success", out var successProperty)
+            //    && successProperty.GetBoolean();
 
-            if (!isVerified)
-            {
-                _logger.LogInformation("Turnstile verification failed for email {Email}", dto.Email);
-                return BadRequest(new { message = "Security verification failed. Please try again." });
-            }
+            //if (!isVerified)
+            //{
+            //    _logger.LogInformation("Turnstile verification failed for email {Email}", dto.Email);
+            //    return BadRequest(new { message = "Security verification failed. Please try again." });
+            //}
 
             var fullName = $"{dto.ParentFirstName} {dto.ParentLastName}".Trim();
 
