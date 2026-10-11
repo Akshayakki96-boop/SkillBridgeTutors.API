@@ -32,6 +32,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<ILeadRepository, LeadRepository>();
 builder.Services.AddScoped<IDemoRepository, DemoRepository>();
 builder.Services.AddScoped<ICallRecordRepository, CallRecordRepository>();
+builder.Services.AddScoped<IRegularClassRepository, RegularClassRepository>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 
 // Services
 builder.Services.AddHttpClient<IRetellService, RetellService>();
@@ -43,7 +46,6 @@ builder.Services.AddHttpClient<IEmailProvider, ResendEmailProvider>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
-builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"]

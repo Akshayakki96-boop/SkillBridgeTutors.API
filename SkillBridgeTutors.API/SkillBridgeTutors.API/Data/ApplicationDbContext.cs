@@ -20,6 +20,8 @@ namespace SkillBridgeTutors.API.Data
         public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<RegularClass> RegularClasses => Set<RegularClass>();
+        public DbSet<ClassAttendance> ClassAttendances => Set<ClassAttendance>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

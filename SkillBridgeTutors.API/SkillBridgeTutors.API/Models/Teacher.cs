@@ -32,5 +32,6 @@ namespace SkillBridgeTutors.API.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<DemoBooking> DemoBookings { get; set; } = new List<DemoBooking>();
+        public ICollection<RegularClass> RegularClasses { get; set; } = new List<RegularClass>();
     }
 }
