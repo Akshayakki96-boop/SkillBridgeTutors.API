@@ -22,6 +22,7 @@ namespace SkillBridgeTutors.API.Data
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<RegularClass> RegularClasses => Set<RegularClass>();
         public DbSet<ClassAttendance> ClassAttendances => Set<ClassAttendance>();
+        public DbSet<TeacherAvailability> TeacherAvailabilities => Set<TeacherAvailability>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -70,6 +71,12 @@ namespace SkillBridgeTutors.API.Data
                 .WithMany()
                 .HasForeignKey(a => a.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<TeacherAvailability>()
+                .HasOne(a => a.Teacher)
+                .WithMany()
+                .HasForeignKey(a => a.TeacherId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

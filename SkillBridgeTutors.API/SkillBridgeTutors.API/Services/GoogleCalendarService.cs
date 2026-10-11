@@ -22,5 +22,15 @@ namespace SkillBridgeTutors.API.Services
 
             return Task.FromResult(meetLink);
         }
+
+        public Task<string> CreateClassMeetingAsync()
+        {
+            var roomName = $"skillbridge-class-{Guid.NewGuid():N}";
+            var meetLink = $"https://meet.jit.si/{roomName}";
+
+            _logger.LogInformation("Jitsi Meet link created for regular class: '{MeetLink}'", meetLink);
+
+            return Task.FromResult(meetLink);
+        }
     }
 }
