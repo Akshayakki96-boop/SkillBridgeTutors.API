@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -40,9 +41,26 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> GetDashboard()
         {
             // Extract teacher ID from JWT
-            var teacherIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var teacherIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            // Debug logging
+            _logger.LogInformation("Teacher Dashboard - User Identity: {Identity}, IsAuthenticated: {IsAuthenticated}, Claims Count: {ClaimsCount}",
+                User.Identity?.Name ?? "Unknown",
+                User.Identity?.IsAuthenticated ?? false,
+                User.Claims.Count());
+
+            if (string.IsNullOrEmpty(teacherIdClaim))
+            {
+                _logger.LogWarning("No Sub claim found in token. Available claims: {Claims}",
+                    string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
+            }
+
             if (!long.TryParse(teacherIdClaim, out var teacherId))
-                return Unauthorized(new { message = "Invalid teacher token." });
+            {
+                _logger.LogWarning("Failed to parse teacher ID from claim: {Claim}", teacherIdClaim);
+                return Unauthorized(new { message = "Invalid teacher token.", details = "Could not extract teacher ID from token" });
+            }
 
             // Get teacher details
             var teacher = await _teacherRepository.GetByIdAsync(teacherId);

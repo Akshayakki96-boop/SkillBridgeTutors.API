@@ -35,7 +35,8 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> GetDashboard()
         {
             // Extract student ID from JWT
-            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (!int.TryParse(studentIdClaim, out var studentId))
                 return Unauthorized(new { message = "Invalid student token." });
 
@@ -128,7 +129,8 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> GetClassDetails(long classId)
         {
             // Extract student ID from JWT
-            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (!int.TryParse(studentIdClaim, out var studentId))
                 return Unauthorized(new { message = "Invalid student token." });
 
@@ -158,7 +160,8 @@ namespace SkillBridgeTutors.API.Controllers
         public async Task<IActionResult> GetProfile()
         {
             // Extract student ID from JWT
-            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             if (!int.TryParse(studentIdClaim, out var studentId))
                 return Unauthorized(new { message = "Invalid student token." });
 

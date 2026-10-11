@@ -64,6 +64,12 @@ namespace SkillBridgeTutors.API.Data
                 .WithMany(l => l.CallRecords)
                 .HasForeignKey(c => c.LeadId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ClassAttendance>()
+                .HasOne(a => a.Student)
+                .WithMany()
+                .HasForeignKey(a => a.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
