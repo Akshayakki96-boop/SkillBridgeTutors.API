@@ -14,16 +14,29 @@ namespace SkillBridgeTutors.API.DTOs
         public string Subject { get; set; } = string.Empty;
 
         [Required]
-        public DateTime StartTime { get; set; }
+        public DateOnly StartDate { get; set; }
 
         [Required]
-        public DateTime EndTime { get; set; }
+        public TimeOnly StartTime { get; set; }
+
+        [Required]
+        public TimeOnly EndTime { get; set; }
 
         public string? RecurrencePattern { get; set; } // Weekly, BiWeekly, Monthly, OneTime
 
         public string? MeetingLink { get; set; }
 
         public string? Notes { get; set; }
+
+        /// <summary>
+        /// Composes a DateTime from StartDate and StartTime.
+        /// </summary>
+        public DateTime GetStartDateTime() => StartDate.ToDateTime(StartTime);
+
+        /// <summary>
+        /// Composes a DateTime from StartDate and EndTime.
+        /// </summary>
+        public DateTime GetEndDateTime() => StartDate.ToDateTime(EndTime);
     }
 
     public class UpdateRegularClassDto
