@@ -448,8 +448,8 @@ namespace SkillBridgeTutors.API.Services
 
             var title = isReschedule ? "Your class has been rescheduled" : "Your class is scheduled";
 
-            // Format time with UK timezone indicator (stored times are already in UK timezone)
-            var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} GMT";
+            // Times are stored in UK timezone, display with GMT/BST indicator
+            var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} GMT/BST";
             var meetingLink = regularClass.MeetingLink ?? "#";
             var subject = $"{title} – {regularClass.Subject} – SkillBridge Tutors";
 

@@ -85,14 +85,11 @@ namespace SkillBridgeTutors.API.Services
             if (teacher == null || !teacher.IsActive)
                 return (null, "Teacher not found or inactive.");
 
-            // Convert UTC payload to UK timezone (GMT/BST)
-            var ukTimeZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-            var startTimeUk = TimeZoneInfo.ConvertTime(dto.StartTime, TimeZoneInfo.Utc, ukTimeZone);
-            var endTimeUk = TimeZoneInfo.ConvertTime(dto.EndTime, TimeZoneInfo.Utc, ukTimeZone);
-
-            var day = startTimeUk.DayOfWeek;
-            var start = TimeOnly.FromDateTime(startTimeUk);
-            var end = TimeOnly.FromDateTime(endTimeUk);
+            // Treat input times as UK local time (no conversion needed)
+            // Frontend sends UK time directly, we store UK time
+            var day = dto.StartTime.DayOfWeek;
+            var start = TimeOnly.FromDateTime(dto.StartTime);
+            var end = TimeOnly.FromDateTime(dto.EndTime);
 
             var teacherSlots = await _availabilityRepository.GetByTeacherAsync(teacher.TeacherId);
             if (!teacherSlots.Any(a => a.DayOfWeek == day && a.StartTime <= start && a.EndTime >= end))
@@ -112,8 +109,8 @@ namespace SkillBridgeTutors.API.Services
                 StudentId = student.Id,
                 TeacherId = teacher.TeacherId,
                 Subject = dto.Subject,
-                StartTime = startTimeUk,
-                EndTime = endTimeUk,
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
                 RecurrencePattern = dto.RecurrencePattern ?? "Weekly",
                 MeetingLink = dto.MeetingLink ?? await _meetingService.CreateClassMeetingAsync(),
                 Notes = dto.Notes
@@ -137,14 +134,10 @@ namespace SkillBridgeTutors.API.Services
             if (dto.EndTime.Date != dto.StartTime.Date)
                 return (null, "Start and end time must be on the same day.");
 
-            // Convert UTC payload to UK timezone (GMT/BST)
-            var ukTimeZone = TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
-            var startTimeUk = TimeZoneInfo.ConvertTime(dto.StartTime, TimeZoneInfo.Utc, ukTimeZone);
-            var endTimeUk = TimeZoneInfo.ConvertTime(dto.EndTime, TimeZoneInfo.Utc, ukTimeZone);
-
-            var day = startTimeUk.DayOfWeek;
-            var start = TimeOnly.FromDateTime(startTimeUk);
-            var end = TimeOnly.FromDateTime(endTimeUk);
+            // Treat input times as UK local time (no conversion needed)
+            var day = dto.StartTime.DayOfWeek;
+            var start = TimeOnly.FromDateTime(dto.StartTime);
+            var end = TimeOnly.FromDateTime(dto.EndTime);
 
             var teacherSlots = await _availabilityRepository.GetByTeacherAsync(existing.TeacherId);
             if (!teacherSlots.Any(a => a.DayOfWeek == day && a.StartTime <= start && a.EndTime >= end))
@@ -159,8 +152,8 @@ namespace SkillBridgeTutors.API.Services
             if (studentClash != null)
                 return (null, BuildStudentClashMessage(studentClash));
 
-            existing.StartTime = startTimeUk;
-            existing.EndTime = endTimeUk;
+            existing.StartTime = dto.StartTime;
+            existing.EndTime = dto.EndTime;
             existing.UpdatedAt = DateTime.UtcNow;
             if (!string.IsNullOrWhiteSpace(dto.Reason))
                 existing.Notes = $"Rescheduled: {dto.Reason}";

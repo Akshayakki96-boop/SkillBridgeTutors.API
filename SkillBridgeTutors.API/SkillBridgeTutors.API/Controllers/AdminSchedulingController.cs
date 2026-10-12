@@ -14,12 +14,32 @@ namespace SkillBridgeTutors.API.Controllers
         private readonly IClassSchedulingService _schedulingService;
         private readonly IStudentRepository _studentRepository;
         private readonly IRegularClassRepository _regularClassRepository;
+        private readonly ITeacherAvailabilityRepository _availabilityRepository;
 
-        public AdminSchedulingController(IClassSchedulingService schedulingService, IStudentRepository studentRepository, IRegularClassRepository regularClassRepository)
+        public AdminSchedulingController(IClassSchedulingService schedulingService, IStudentRepository studentRepository, IRegularClassRepository regularClassRepository, ITeacherAvailabilityRepository availabilityRepository)
         {
             _schedulingService = schedulingService;
             _studentRepository = studentRepository;
             _regularClassRepository = regularClassRepository;
+            _availabilityRepository = availabilityRepository;
+        }
+
+        /// <summary>
+        /// Debug endpoint: Get availability for a specific teacher
+        /// </summary>
+        [HttpGet("teachers/{teacherId}/availability")]
+        public async Task<IActionResult> GetTeacherAvailability(long teacherId)
+        {
+            var slots = await _availabilityRepository.GetByTeacherAsync(teacherId);
+            var result = slots.Select(a => new
+            {
+                a.AvailabilityId,
+                DayOfWeek = a.DayOfWeek.ToString(),
+                a.StartTime,
+                a.EndTime,
+                a.IsActive
+            });
+            return Ok(result);
         }
 
         /// <summary>
