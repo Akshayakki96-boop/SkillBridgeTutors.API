@@ -447,7 +447,9 @@ namespace SkillBridgeTutors.API.Services
                 regularClass.ClassId, student.Email, teacher.Email);
 
             var title = isReschedule ? "Your class has been rescheduled" : "Your class is scheduled";
-            var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} UTC";
+
+            // Format time with UK timezone indicator (stored times are already in UK timezone)
+            var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} GMT";
             var meetingLink = regularClass.MeetingLink ?? "#";
             var subject = $"{title} – {regularClass.Subject} – SkillBridge Tutors";
 
