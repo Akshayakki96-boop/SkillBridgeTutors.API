@@ -438,9 +438,13 @@ namespace SkillBridgeTutors.API.Services
             var teacher = regularClass.Teacher;
             if (student == null || teacher == null)
             {
-                _logger.LogWarning("Skipping class email for ClassId {ClassId}: student or teacher not loaded", regularClass.ClassId);
+                _logger.LogWarning("Skipping class email for ClassId {ClassId}: student or teacher not loaded. Student={StudentLoaded}, Teacher={TeacherLoaded}", 
+                    regularClass.ClassId, student != null, teacher != null);
                 return;
             }
+
+            _logger.LogInformation("Preparing to send class email for ClassId {ClassId} to Student {StudentEmail} and Teacher {TeacherEmail}", 
+                regularClass.ClassId, student.Email, teacher.Email);
 
             var title = isReschedule ? "Your class has been rescheduled" : "Your class is scheduled";
             var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} UTC";
@@ -469,8 +473,13 @@ namespace SkillBridgeTutors.API.Services
 </body>
 </html>";
 
+            _logger.LogInformation("Sending student email to {Email}", student.Email);
             await SendHtmlEmailAsync(student.Email, subject, BuildBody(student.FullName, teacher.FullName), "RegularClassScheduled");
+
+            _logger.LogInformation("Sending teacher email to {Email}", teacher.Email);
             await SendHtmlEmailAsync(teacher.Email, subject, BuildBody(teacher.FullName, student.FullName), "RegularClassScheduled");
+
+            _logger.LogInformation("Class emails sent successfully for ClassId {ClassId}", regularClass.ClassId);
         }
 
         private async Task SendHtmlEmailAsync(string toEmail, string subject, string htmlBody, string emailType)
@@ -485,12 +494,13 @@ namespace SkillBridgeTutors.API.Services
 
             try
             {
-                await _emailProvider.SendEmailAsync(mimeMessage);
-                _logger.LogInformation("{EmailType} email sent to {Email}", emailType, toEmail);
+                var messageId = await _emailProvider.SendEmailAsync(mimeMessage);
+                _logger.LogInformation("{EmailType} email sent successfully to {Email}. MessageId: {MessageId}", emailType, toEmail, messageId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send {EmailType} email to {Email}", emailType, toEmail);
+                _logger.LogError(ex, "Failed to send {EmailType} email to {Email}: {ErrorMessage}", emailType, toEmail, ex.Message);
+                // Don't throw - log and continue so class creation isn't blocked
             }
         }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
@@ -12,11 +13,38 @@ namespace SkillBridgeTutors.API.Controllers
     {
         private readonly IClassSchedulingService _schedulingService;
         private readonly IStudentRepository _studentRepository;
+        private readonly IRegularClassRepository _regularClassRepository;
 
-        public AdminSchedulingController(IClassSchedulingService schedulingService, IStudentRepository studentRepository)
+        public AdminSchedulingController(IClassSchedulingService schedulingService, IStudentRepository studentRepository, IRegularClassRepository regularClassRepository)
         {
             _schedulingService = schedulingService;
             _studentRepository = studentRepository;
+            _regularClassRepository = regularClassRepository;
+        }
+
+        /// <summary>
+        /// Lists all scheduled regular classes (excluding cancelled ones) for the admin manage classes page.
+        /// </summary>
+        [HttpGet("regular-classes")]
+        public async Task<IActionResult> GetAllRegularClasses()
+        {
+            var classes = await _regularClassRepository.GetAllAsync();
+            var result = classes.Select(c => new
+            {
+                c.ClassId,
+                c.StudentId,
+                StudentName = c.Student?.FullName ?? "Unknown",
+                StudentEmail = c.Student?.Email ?? string.Empty,
+                c.TeacherId,
+                TeacherName = c.Teacher?.FullName ?? "Unknown",
+                c.Subject,
+                c.StartTime,
+                c.EndTime,
+                c.RecurrencePattern,
+                c.Status,
+                c.MeetingLink
+            });
+            return Ok(result);
         }
 
         /// <summary>

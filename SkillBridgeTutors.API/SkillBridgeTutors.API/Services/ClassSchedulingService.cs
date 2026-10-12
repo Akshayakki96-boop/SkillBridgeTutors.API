@@ -74,6 +74,9 @@ namespace SkillBridgeTutors.API.Services
             if (dto.EndTime <= dto.StartTime)
                 return (null, "End time must be after start time.");
 
+            if (dto.EndTime.Date != dto.StartTime.Date)
+                return (null, "Start and end time must be on the same day.");
+
             var student = await _context.Students.FindAsync(dto.StudentId);
             if (student == null)
                 return (null, "Student not found.");
@@ -82,11 +85,9 @@ namespace SkillBridgeTutors.API.Services
             if (teacher == null || !teacher.IsActive)
                 return (null, "Teacher not found or inactive.");
 
-            var day = dto.StartDate.DayOfWeek;
-            var start = dto.StartTime;
-            var end = dto.EndTime;
-            var startDateTime = dto.GetStartDateTime();
-            var endDateTime = dto.GetEndDateTime();
+            var day = dto.StartTime.DayOfWeek;
+            var start = TimeOnly.FromDateTime(dto.StartTime);
+            var end = TimeOnly.FromDateTime(dto.EndTime);
 
             var teacherSlots = await _availabilityRepository.GetByTeacherAsync(teacher.TeacherId);
             if (!teacherSlots.Any(a => a.DayOfWeek == day && a.StartTime <= start && a.EndTime >= end))
@@ -106,8 +107,8 @@ namespace SkillBridgeTutors.API.Services
                 StudentId = student.Id,
                 TeacherId = teacher.TeacherId,
                 Subject = dto.Subject,
-                StartTime = startDateTime,
-                EndTime = endDateTime,
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
                 RecurrencePattern = dto.RecurrencePattern ?? "Weekly",
                 MeetingLink = dto.MeetingLink ?? await _meetingService.CreateClassMeetingAsync(),
                 Notes = dto.Notes

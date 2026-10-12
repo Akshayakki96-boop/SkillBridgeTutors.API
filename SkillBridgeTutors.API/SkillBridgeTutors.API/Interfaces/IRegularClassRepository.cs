@@ -9,6 +9,7 @@ namespace SkillBridgeTutors.API.Interfaces
         Task<IEnumerable<RegularClass>> GetByTeacherAsync(long teacherId);
         Task<IEnumerable<RegularClass>> GetByStudentAsync(int studentId);
         Task<IEnumerable<RegularClass>> GetUpcomingAsync(int days = 30);
+        Task<IEnumerable<RegularClass>> GetAllAsync();
         Task UpdateAsync(RegularClass regularClass);
         Task DeleteAsync(RegularClass regularClass);
     }
