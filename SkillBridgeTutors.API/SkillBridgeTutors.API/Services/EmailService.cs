@@ -430,6 +430,70 @@ namespace SkillBridgeTutors.API.Services
                 throw new InvalidOperationException(sendError);
         }
 
+        public async Task SendRegularClassEmailAsync(RegularClass regularClass, bool isReschedule)
+        {
+            var supportEmail = _configuration["Email:Support"] ?? "info@skillbridgetutors.com";
+
+            var student = regularClass.Student;
+            var teacher = regularClass.Teacher;
+            if (student == null || teacher == null)
+            {
+                _logger.LogWarning("Skipping class email for ClassId {ClassId}: student or teacher not loaded", regularClass.ClassId);
+                return;
+            }
+
+            var title = isReschedule ? "Your class has been rescheduled" : "Your class is scheduled";
+            var when = $"{regularClass.StartTime:dddd, dd MMMM yyyy} · {regularClass.StartTime:HH:mm} – {regularClass.EndTime:HH:mm} UTC";
+            var meetingLink = regularClass.MeetingLink ?? "#";
+            var subject = $"{title} – {regularClass.Subject} – SkillBridge Tutors";
+
+            string BuildBody(string greetingName, string withName) => $@"<!DOCTYPE html>
+<html lang=""en"">
+<head><meta charset=""UTF-8"" /><title>{title}</title></head>
+<body style=""margin:0;padding:24px;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;"">
+  <div style=""max-width:600px;margin:0 auto;background:#ffffff;border-radius:12px;padding:32px;"">
+    <h2 style=""margin:0 0 12px;color:#1a1a2e;"">{title}</h2>
+    <p style=""color:#555;font-size:15px;line-height:1.7;"">Hello {greetingName},</p>
+    <table width=""100%"" cellpadding=""8"" style=""background:#f0f4ff;border-radius:10px;margin:16px 0;"">
+      <tr><td style=""color:#888;"">Subject</td><td style=""text-align:right;""><strong>{regularClass.Subject}</strong></td></tr>
+      <tr><td style=""color:#888;"">With</td><td style=""text-align:right;""><strong>{withName}</strong></td></tr>
+      <tr><td style=""color:#888;"">When</td><td style=""text-align:right;""><strong>{when}</strong></td></tr>
+      <tr><td style=""color:#888;"">Repeats</td><td style=""text-align:right;""><strong>{regularClass.RecurrencePattern ?? "Weekly"}</strong></td></tr>
+    </table>
+    <p style=""text-align:center;margin:24px 0;"">
+      <a href=""{meetingLink}"" style=""display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:50px;font-weight:600;"">Join Class</a>
+    </p>
+    <p style=""color:#777;font-size:13px;"">Meeting link: <a href=""{meetingLink}"">{meetingLink}</a></p>
+    <p style=""color:#777;font-size:13px;"">Unable to attend? Contact us at <a href=""mailto:{supportEmail}"">{supportEmail}</a> to request a reschedule.</p>
+  </div>
+</body>
+</html>";
+
+            await SendHtmlEmailAsync(student.Email, subject, BuildBody(student.FullName, teacher.FullName), "RegularClassScheduled");
+            await SendHtmlEmailAsync(teacher.Email, subject, BuildBody(teacher.FullName, student.FullName), "RegularClassScheduled");
+        }
+
+        private async Task SendHtmlEmailAsync(string toEmail, string subject, string htmlBody, string emailType)
+        {
+            var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";
+
+            var mimeMessage = new MimeMessage();
+            mimeMessage.From.Add(new MailboxAddress("SkillBridge Tutors", fromEmail));
+            mimeMessage.To.Add(MailboxAddress.Parse(toEmail));
+            mimeMessage.Subject = subject;
+            mimeMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html) { Text = htmlBody };
+
+            try
+            {
+                await _emailProvider.SendEmailAsync(mimeMessage);
+                _logger.LogInformation("{EmailType} email sent to {Email}", emailType, toEmail);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send {EmailType} email to {Email}", emailType, toEmail);
+            }
+        }
+
         public async Task SendStudentPasswordResetAsync(Student student, string resetLink)
         {
             var fromEmail = _configuration["Email:From"] ?? "noreply@skillbridgetutors.com";

@@ -11,10 +11,32 @@ namespace SkillBridgeTutors.API.Controllers
     public class AdminSchedulingController : ControllerBase
     {
         private readonly IClassSchedulingService _schedulingService;
+        private readonly IStudentRepository _studentRepository;
 
-        public AdminSchedulingController(IClassSchedulingService schedulingService)
+        public AdminSchedulingController(IClassSchedulingService schedulingService, IStudentRepository studentRepository)
         {
             _schedulingService = schedulingService;
+            _studentRepository = studentRepository;
+        }
+
+        /// <summary>
+        /// Lists all registered students for the class assignment dropdown.
+        /// </summary>
+        [HttpGet("students")]
+        public async Task<IActionResult> GetStudents()
+        {
+            var students = await _studentRepository.GetAllAsync();
+            var result = students.Select(s => new StudentListItemDto
+            {
+                Id = s.Id,
+                FullName = s.FullName,
+                Email = s.Email,
+                Phone = s.Phone,
+                ClassYear = s.ClassYear,
+                Subject = s.Subject,
+                IsActive = s.IsActive
+            });
+            return Ok(result);
         }
 
         /// <summary>
@@ -49,6 +71,31 @@ namespace SkillBridgeTutors.API.Controllers
                 created.RecurrencePattern,
                 created.Status,
                 created.MeetingLink
+            });
+        }
+
+        /// <summary>
+        /// Reschedules an existing regular class to a new slot, re-validating clashes and emailing the student and teacher.
+        /// </summary>
+        [HttpPut("regular-classes/{classId}/reschedule")]
+        public async Task<IActionResult> RescheduleRegularClass(long classId, [FromBody] RescheduleRegularClassDto dto)
+        {
+            var result = await _schedulingService.RescheduleRegularClassAsync(classId, dto);
+            if (result.Class == null)
+                return BadRequest(new { message = result.Error });
+
+            var updated = result.Class;
+            return Ok(new
+            {
+                updated.ClassId,
+                updated.StudentId,
+                updated.TeacherId,
+                updated.Subject,
+                updated.StartTime,
+                updated.EndTime,
+                updated.RecurrencePattern,
+                updated.Status,
+                updated.MeetingLink
             });
         }
     }

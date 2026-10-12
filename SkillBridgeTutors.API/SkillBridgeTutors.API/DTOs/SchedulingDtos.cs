@@ -32,4 +32,22 @@ namespace SkillBridgeTutors.API.DTOs
         public TimeOnly AvailableFrom { get; set; }
         public TimeOnly AvailableTo { get; set; }
     }
+
+    public class RescheduleRegularClassDto
+    {
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    public class StudentListItemDto
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string? ClassYear { get; set; }
+        public string? Subject { get; set; }
+        public bool IsActive { get; set; }
+    }
 }

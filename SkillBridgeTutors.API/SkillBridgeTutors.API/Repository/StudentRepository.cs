@@ -14,6 +14,13 @@ namespace SkillBridgeTutors.API.Repository
             _context = context;
         }
 
+        public async Task<IEnumerable<Student>> GetAllAsync()
+        {
+            return await _context.Students
+                .OrderBy(s => s.FullName)
+                .ToListAsync();
+        }
+
         public async Task<Student?> GetByIdAsync(int studentId)
         {
             return await _context.Students

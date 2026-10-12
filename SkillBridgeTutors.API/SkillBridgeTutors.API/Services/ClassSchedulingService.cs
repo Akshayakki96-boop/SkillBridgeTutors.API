@@ -12,17 +12,20 @@ namespace SkillBridgeTutors.API.Services
         private readonly ITeacherAvailabilityRepository _availabilityRepository;
         private readonly IRegularClassRepository _regularClassRepository;
         private readonly IGoogleCalendarService _meetingService;
+        private readonly IEmailService _emailService;
 
         public ClassSchedulingService(
             ApplicationDbContext context,
             ITeacherAvailabilityRepository availabilityRepository,
             IRegularClassRepository regularClassRepository,
-            IGoogleCalendarService meetingService)
+            IGoogleCalendarService meetingService,
+            IEmailService emailService)
         {
             _context = context;
             _availabilityRepository = availabilityRepository;
             _regularClassRepository = regularClassRepository;
             _meetingService = meetingService;
+            _emailService = emailService;
         }
 
         public async Task<IEnumerable<ScheduleSuggestionDto>> GetSuggestionsAsync(ScheduleSuggestionRequestDto request)
@@ -95,8 +98,9 @@ namespace SkillBridgeTutors.API.Services
                 return (null, "Teacher already has a class at this time.");
 
             var studentClasses = await _regularClassRepository.GetByStudentAsync(student.Id);
-            if (studentClasses.Any(c => Overlaps(day, start, end, c)))
-                return (null, "Student already has a class at this time.");
+            var studentClash = studentClasses.FirstOrDefault(c => Overlaps(day, start, end, c));
+            if (studentClash != null)
+                return (null, BuildStudentClashMessage(studentClash));
 
             var regularClass = new RegularClass
             {
@@ -111,7 +115,55 @@ namespace SkillBridgeTutors.API.Services
             };
 
             var created = await _regularClassRepository.CreateAsync(regularClass);
-            return (created, null);
+            var full = await _regularClassRepository.GetByIdAsync(created.ClassId) ?? created;
+            await _emailService.SendRegularClassEmailAsync(full, false);
+            return (full, null);
+        }
+
+        public async Task<(RegularClass? Class, string? Error)> RescheduleRegularClassAsync(long classId, RescheduleRegularClassDto dto)
+        {
+            var existing = await _regularClassRepository.GetByIdAsync(classId);
+            if (existing == null)
+                return (null, "Class not found.");
+
+            if (dto.EndTime <= dto.StartTime)
+                return (null, "End time must be after start time.");
+
+            if (dto.EndTime.Date != dto.StartTime.Date)
+                return (null, "Start and end time must be on the same day.");
+
+            var day = dto.StartTime.DayOfWeek;
+            var start = TimeOnly.FromDateTime(dto.StartTime);
+            var end = TimeOnly.FromDateTime(dto.EndTime);
+
+            var teacherSlots = await _availabilityRepository.GetByTeacherAsync(existing.TeacherId);
+            if (!teacherSlots.Any(a => a.DayOfWeek == day && a.StartTime <= start && a.EndTime >= end))
+                return (null, "Teacher is not available at the requested time.");
+
+            var teacherClasses = await _regularClassRepository.GetByTeacherAsync(existing.TeacherId);
+            if (teacherClasses.Any(c => c.ClassId != classId && Overlaps(day, start, end, c)))
+                return (null, "Teacher already has a class at this time.");
+
+            var studentClasses = await _regularClassRepository.GetByStudentAsync(existing.StudentId);
+            var studentClash = studentClasses.FirstOrDefault(c => c.ClassId != classId && Overlaps(day, start, end, c));
+            if (studentClash != null)
+                return (null, BuildStudentClashMessage(studentClash));
+
+            existing.StartTime = dto.StartTime;
+            existing.EndTime = dto.EndTime;
+            existing.UpdatedAt = DateTime.UtcNow;
+            if (!string.IsNullOrWhiteSpace(dto.Reason))
+                existing.Notes = $"Rescheduled: {dto.Reason}";
+
+            await _regularClassRepository.UpdateAsync(existing);
+            await _emailService.SendRegularClassEmailAsync(existing, true);
+            return (existing, null);
+        }
+
+        private static string BuildStudentClashMessage(RegularClass clash)
+        {
+            return $"Student already has a class at this time: {clash.Subject} with {clash.Teacher?.FullName ?? "a teacher"} " +
+                   $"on {clash.StartTime:dddd} {clash.StartTime:HH:mm}-{clash.EndTime:HH:mm}.";
         }
 
         private static bool HasSubject(Teacher teacher, string subject)
