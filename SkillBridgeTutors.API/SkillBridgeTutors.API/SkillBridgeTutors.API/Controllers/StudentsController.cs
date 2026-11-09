@@ -131,7 +131,7 @@ namespace SkillBridgeTutors.API.Controllers
                     Email = student.Email,
                     Phone = student.Phone,
                     ClassYear = student.ClassYear,
-                    Subject = student.Subject,
+                    Subject = string.IsNullOrWhiteSpace(student.Subject) ? "Maths" : student.Subject,
                     TotalClasses = classesLst.Count(),
                     CompletedClasses = classesLst.Count(c => c.Status == "Completed"),
                     UpcomingClasses = upcomingClasses.Count,

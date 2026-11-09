@@ -31,7 +31,7 @@ namespace SkillBridgeTutors.API.DTOs
         public string? ParentFirstName { get; set; }
         public string? ParentLastName { get; set; }
         public string? ClassYear { get; set; }
-        public string? Subject { get; set; }
+        public string? Subject { get; set; } = "Maths";
         public string? Address { get; set; }
     }
 

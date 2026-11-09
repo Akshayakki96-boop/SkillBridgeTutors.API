@@ -57,7 +57,7 @@ namespace SkillBridgeTutors.API.Controllers
                 ParentFirstName = dto.ParentFirstName,
                 ParentLastName = dto.ParentLastName,
                 ClassYear = dto.ClassYear,
-                Subject = dto.Subject,
+                Subject = string.IsNullOrWhiteSpace(dto.Subject) ? "Maths" : dto.Subject,
                 Address = dto.Address,
                 AuthProvider = "email",
                 IsActive = false
@@ -168,7 +168,7 @@ namespace SkillBridgeTutors.API.Controllers
                     ParentFirstName = dto.ParentFirstName,
                     ParentLastName = dto.ParentLastName,
                     ClassYear = dto.ClassYear,
-                    Subject = dto.Subject,
+                    Subject = string.IsNullOrWhiteSpace(dto.Subject) ? "Maths" : dto.Subject,
                     Address = dto.Address,
                     IsActive = true  // Allow login even without payment
                 };
@@ -384,7 +384,7 @@ namespace SkillBridgeTutors.API.Controllers
             student.ParentFirstName,
             student.ParentLastName,
             student.ClassYear,
-            student.Subject,
+            Subject = string.IsNullOrWhiteSpace(student.Subject) ? "Maths" : student.Subject,
             student.Address,
             student.AuthProvider,
             student.IsActive,

@@ -36,7 +36,7 @@ namespace SkillBridgeTutors.API.Models
         public string? ClassYear { get; set; }
 
         [Column("Subject")]
-        public string? Subject { get; set; }
+        public string? Subject { get; set; } = "Maths";
 
         [Column("Address")]
         public string? Address { get; set; }
