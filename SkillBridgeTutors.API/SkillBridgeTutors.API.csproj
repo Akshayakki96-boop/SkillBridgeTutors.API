@@ -29,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="SkillBridgeTutors.API\SkillBridgeTutors.API\DTOs\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

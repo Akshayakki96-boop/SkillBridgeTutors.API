@@ -31,15 +31,4 @@ namespace SkillBridgeTutors.API.DTOs
         public string Status { get; set; } = string.Empty;
         public string? RecurrencePattern { get; set; }
     }
-
-    public class UpdateStudentProfileDto
-    {
-        public string? FullName { get; set; }
-        public string? Phone { get; set; }
-        public string? ParentFirstName { get; set; }
-        public string? ParentLastName { get; set; }
-        public string? ClassYear { get; set; }
-        public string? Subject { get; set; }
-        public string? Address { get; set; }
-    }
 }
