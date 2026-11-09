@@ -15,6 +15,10 @@ namespace SkillBridgeTutors.API.Models
         public string? Subject { get; set; }
         public string? Address { get; set; }
 
+        // OAuth provider tracking
+        public string? GoogleId { get; set; }
+        public string? AuthProvider { get; set; }
+
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -62,16 +62,6 @@ namespace SkillBridgeTutors.API.Repository
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<RegularClass>> GetAllAsync()
-        {
-            return await _context.RegularClasses
-                .Include(c => c.Student)
-                .Include(c => c.Teacher)
-                .Where(c => c.Status != "Cancelled")
-                .OrderBy(c => c.StartTime)
-                .ToListAsync();
-        }
-
         public async Task UpdateAsync(RegularClass regularClass)
         {
             _context.RegularClasses.Update(regularClass);

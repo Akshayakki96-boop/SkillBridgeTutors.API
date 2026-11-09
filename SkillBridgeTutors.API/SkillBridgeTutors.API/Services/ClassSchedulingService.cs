@@ -85,8 +85,6 @@ namespace SkillBridgeTutors.API.Services
             if (teacher == null || !teacher.IsActive)
                 return (null, "Teacher not found or inactive.");
 
-            // Treat input times as UK local time (no conversion needed)
-            // Frontend sends UK time directly, we store UK time
             var day = dto.StartTime.DayOfWeek;
             var start = TimeOnly.FromDateTime(dto.StartTime);
             var end = TimeOnly.FromDateTime(dto.EndTime);
@@ -100,9 +98,8 @@ namespace SkillBridgeTutors.API.Services
                 return (null, "Teacher already has a class at this time.");
 
             var studentClasses = await _regularClassRepository.GetByStudentAsync(student.Id);
-            var studentClash = studentClasses.FirstOrDefault(c => Overlaps(day, start, end, c));
-            if (studentClash != null)
-                return (null, BuildStudentClashMessage(studentClash));
+            if (studentClasses.Any(c => Overlaps(day, start, end, c)))
+                return (null, "Student already has a class at this time.");
 
             var regularClass = new RegularClass
             {
@@ -117,9 +114,31 @@ namespace SkillBridgeTutors.API.Services
             };
 
             var created = await _regularClassRepository.CreateAsync(regularClass);
-            var full = await _regularClassRepository.GetByIdAsync(created.ClassId) ?? created;
-            await _emailService.SendRegularClassEmailAsync(full, false);
-            return (full, null);
+            return (created, null);
+        }
+
+        private static bool HasSubject(Teacher teacher, string subject)
+        {
+            return teacher.Subjects
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(s => s.Equals(subject, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool Overlaps(DayOfWeek day, TimeOnly start, TimeOnly end, RegularClass existing)
+        {
+            if (existing.StartTime.DayOfWeek != day)
+                return false;
+
+            var existingStart = TimeOnly.FromDateTime(existing.StartTime);
+            var existingEnd = TimeOnly.FromDateTime(existing.EndTime);
+            return start < existingEnd && existingStart < end;
+        }
+
+        private static string BuildStudentClashMessage(RegularClass clashingClass)
+        {
+            var clashTime = $"{clashingClass.StartTime:HH:mm} - {clashingClass.EndTime:HH:mm}";
+            var clashDay = clashingClass.StartTime.ToString("dddd");
+            return $"Student already has a class in {clashingClass.Subject} on {clashDay} from {clashTime}.";
         }
 
         public async Task<(RegularClass? Class, string? Error)> RescheduleRegularClassAsync(long classId, RescheduleRegularClassDto dto)
@@ -161,29 +180,6 @@ namespace SkillBridgeTutors.API.Services
             await _regularClassRepository.UpdateAsync(existing);
             await _emailService.SendRegularClassEmailAsync(existing, true);
             return (existing, null);
-        }
-
-        private static string BuildStudentClashMessage(RegularClass clash)
-        {
-            return $"Student already has a class at this time: {clash.Subject} with {clash.Teacher?.FullName ?? "a teacher"} " +
-                   $"on {clash.StartTime:dddd} {clash.StartTime:HH:mm}-{clash.EndTime:HH:mm}.";
-        }
-
-        private static bool HasSubject(Teacher teacher, string subject)
-        {
-            return teacher.Subjects
-                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Any(s => s.Equals(subject, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private static bool Overlaps(DayOfWeek day, TimeOnly start, TimeOnly end, RegularClass existing)
-        {
-            if (existing.StartTime.DayOfWeek != day)
-                return false;
-
-            var existingStart = TimeOnly.FromDateTime(existing.StartTime);
-            var existingEnd = TimeOnly.FromDateTime(existing.EndTime);
-            return start < existingEnd && existingStart < end;
         }
     }
 }

@@ -46,6 +46,7 @@ builder.Services.AddHttpClient<IEmailProvider, ResendEmailProvider>();
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
 builder.Services.AddScoped<IClassSchedulingService, ClassSchedulingService>();
 

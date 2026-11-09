@@ -31,6 +31,10 @@ namespace SkillBridgeTutors.API.Models
         [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // OAuth provider tracking
+        public string? GoogleId { get; set; }
+        public string? AuthProvider { get; set; }
+
         public ICollection<DemoBooking> DemoBookings { get; set; } = new List<DemoBooking>();
         public ICollection<RegularClass> RegularClasses { get; set; } = new List<RegularClass>();
     }

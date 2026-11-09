@@ -7,6 +7,7 @@ using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.DTOs;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
+using SkillBridgeTutors.API.Services;
 
 namespace SkillBridgeTutors.API.Controllers
 {
@@ -18,17 +19,20 @@ namespace SkillBridgeTutors.API.Controllers
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly IGoogleAuthService _googleAuthService;
 
         public StudentAuthController(
             ApplicationDbContext context,
             ITokenService tokenService,
             IEmailService emailService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IGoogleAuthService googleAuthService)
         {
             _context = context;
             _tokenService = tokenService;
             _emailService = emailService;
             _configuration = configuration;
+            _googleAuthService = googleAuthService;
         }
 
         /// <summary>
@@ -54,6 +58,7 @@ namespace SkillBridgeTutors.API.Controllers
                 ClassYear = dto.ClassYear,
                 Subject = dto.Subject,
                 Address = dto.Address,
+                AuthProvider = "email",
                 IsActive = false
             };
 
@@ -96,6 +101,119 @@ namespace SkillBridgeTutors.API.Controllers
                 PaymentRequired = true,
                 PaymentCompleted = true
             });
+        }
+
+        /// <summary>
+        /// Sign up or login with Google
+        /// </summary>
+        [HttpPost("google-signin")]
+        public async Task<IActionResult> GoogleSignIn([FromBody] StudentGoogleSignInDto dto)
+        {
+            // Verify the ID token
+            var payload = await _googleAuthService.VerifyIdTokenAsync(dto.IdToken);
+            if (payload == null)
+                return Unauthorized(new { message = "Invalid Google token." });
+
+            // Check if student exists by Google ID
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.GoogleId == payload.Subject);
+
+            if (student != null)
+            {
+                // Existing student - just login
+                if (!student.IsActive)
+                    return Unauthorized(new { message = "Your account has been deactivated." });
+
+                var token = _tokenService.GenerateToken(student);
+                return Ok(new StudentAuthResponseDto
+                {
+                    Token = token,
+                    StudentId = student.Id,
+                    Email = student.Email,
+                    FullName = student.FullName,
+                    ExpiresAt = DateTime.UtcNow.AddHours(12),
+                    PaymentRequired = true,
+                    PaymentCompleted = student.IsActive
+                });
+            }
+
+            // New student - check if email already exists
+            var existingByEmail = await _context.Students.FirstOrDefaultAsync(s => s.Email == payload.Email);
+            if (existingByEmail != null)
+            {
+                // Email exists but not linked to Google - offer to link
+                return Conflict(new
+                {
+                    message = "Email already registered. Please login with your password or reset it.",
+                    email = payload.Email
+                });
+            }
+
+            // Create new student
+            var newStudent = new Student
+            {
+                FullName = payload.Name ?? payload.Email,
+                Email = payload.Email,
+                GoogleId = payload.Subject,
+                AuthProvider = "google",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // Random password - not used
+                Phone = dto.Phone ?? string.Empty,
+                ParentFirstName = dto.ParentFirstName,
+                ParentLastName = dto.ParentLastName,
+                ClassYear = dto.ClassYear,
+                Subject = dto.Subject,
+                Address = dto.Address,
+                IsActive = false  // Still requires payment
+            };
+
+            _context.Students.Add(newStudent);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GoogleSignIn), new StudentAuthResponseDto
+            {
+                StudentId = newStudent.Id,
+                Email = newStudent.Email,
+                FullName = newStudent.FullName,
+                ExpiresAt = null,
+                PaymentRequired = true,
+                PaymentCompleted = false
+            });
+        }
+
+        /// <summary>
+        /// Link Google account to existing student (optional enhancement)
+        /// </summary>
+        [HttpPost("link-google")]
+        public async Task<IActionResult> LinkGoogleAccount([FromBody] GoogleSignInDto dto)
+        {
+            // Verify Google token
+            var payload = await _googleAuthService.VerifyIdTokenAsync(dto.IdToken);
+            if (payload == null)
+                return Unauthorized(new { message = "Invalid Google token." });
+
+            // Get authenticated user
+            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(studentIdClaim, out var studentId))
+                return Unauthorized(new { message = "Invalid token." });
+
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            if (student == null)
+                return NotFound();
+
+            // Check if Google ID is already linked to another account
+            var existingGoogleUser = await _context.Students.FirstOrDefaultAsync(s => s.GoogleId == payload.Subject);
+            if (existingGoogleUser != null && existingGoogleUser.Id != studentId)
+                return Conflict(new { message = "This Google account is already linked to another user." });
+
+            // Link the Google account
+            student.GoogleId = payload.Subject;
+            if (string.IsNullOrEmpty(student.AuthProvider))
+                student.AuthProvider = "email+google";
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Google account linked successfully." });
         }
 
         /// <summary>
