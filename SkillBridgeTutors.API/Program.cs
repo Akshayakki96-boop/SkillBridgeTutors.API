@@ -139,71 +139,13 @@ try
 
         try
         {
-            // First ensure schema is correct - add missing columns directly
-            var connection = dbContext.Database.GetDbConnection();
+            logger.LogInformation("Ensuring database schema is up-to-date...");
 
-            if (connection.State == System.Data.ConnectionState.Closed)
-            {
-                await connection.OpenAsync();
-            }
-
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandTimeout = 120;
-                command.CommandType = System.Data.CommandType.Text;
-
-                // Add GoogleId column if missing
-                command.CommandText = @"
-                    IF OBJECT_ID(N'[dbo].[Students]', N'U') IS NOT NULL
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-                            WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'GoogleId'
-                        )
-                        BEGIN
-                            ALTER TABLE dbo.Students ADD GoogleId nvarchar(max) NULL;
-                            PRINT 'Successfully added GoogleId column to Students table';
-                        END
-                    END";
-
-                await command.ExecuteNonQueryAsync();
-                logger.LogInformation("✓ GoogleId column verified/added");
-
-                // Add AuthProvider column if missing
-                command.CommandText = @"
-                    IF OBJECT_ID(N'[dbo].[Students]', N'U') IS NOT NULL
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-                            WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'AuthProvider'
-                        )
-                        BEGIN
-                            ALTER TABLE dbo.Students ADD AuthProvider nvarchar(max) NULL;
-                            PRINT 'Successfully added AuthProvider column to Students table';
-                        END
-                    END";
-
-                await command.ExecuteNonQueryAsync();
-                logger.LogInformation("✓ AuthProvider column verified/added");
-            }
-
-            if (connection.State == System.Data.ConnectionState.Open)
-            {
-                await connection.CloseAsync();
-            }
+            // Use the helper to ensure schema is correct
+            await SchemaMigrationHelper.EnsureStudentsTableSchemaAsync(dbContext, logger);
 
             // Then apply any pending migrations
             logger.LogInformation("Applying pending Entity Framework migrations...");
-            dbContext.Database.Migrate();
-            logger.LogInformation("✓ EF Core migrations applied successfully");
-
-            logger.LogInformation("==== DATABASE INITIALIZATION COMPLETED SUCCESSFULLY ====");
-        }
-        catch (Exception schemaEx)
-        {
-            logger.LogWarning(schemaEx, "⚠ Schema operation warning - attempting EF Core migrations");
-
-            // Try to apply migrations anyway
             try
             {
                 dbContext.Database.Migrate();
@@ -211,8 +153,15 @@ try
             }
             catch (Exception migrEx)
             {
-                logger.LogError(migrEx, "❌ Failed to apply migrations");
+                logger.LogWarning(migrEx, "⚠ Warning during migration application - schema may have been updated manually");
             }
+
+            logger.LogInformation("==== DATABASE INITIALIZATION COMPLETED SUCCESSFULLY ====");
+        }
+        catch (Exception schemaEx)
+        {
+            logger.LogError(schemaEx, "❌ Error during schema initialization");
+            throw;
         }
     }
 }
