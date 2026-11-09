@@ -34,92 +34,123 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
-            // Extract student ID from JWT
-            var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (!int.TryParse(studentIdClaim, out var studentId))
-                return Unauthorized(new { message = "Invalid student token." });
-
-            // Get student details
-            var student = await _studentRepository.GetByIdAsync(studentId);
-            if (student == null)
-                return NotFound(new { message = "Student not found." });
-
-            // Get all regular classes for this student
-            var allClasses = await _regularClassRepository.GetByStudentAsync(studentId);
-
-            var today = DateTime.UtcNow.Date;
-
-            // Today's classes
-            var todaysClasses = allClasses
-                .Where(c => c.StartTime.Date == today && c.Status != "Cancelled")
-                .OrderBy(c => c.StartTime)
-                .Select(c => new StudentClassDto
-                {
-                    ClassId = c.ClassId,
-                    TeacherName = c.Teacher?.FullName ?? "Unknown",
-                    Subject = c.Subject,
-                    StartTime = c.StartTime,
-                    EndTime = c.EndTime,
-                    MeetingLink = c.MeetingLink,
-                    Status = c.Status,
-                    RecurrencePattern = c.RecurrencePattern
-                })
-                .ToList();
-
-            // Upcoming classes (future, excluding today)
-            var upcomingClasses = allClasses
-                .Where(c => c.StartTime.Date > today && c.Status != "Cancelled")
-                .OrderBy(c => c.StartTime)
-                .Take(20) // Limit to next 20 classes
-                .Select(c => new StudentClassDto
-                {
-                    ClassId = c.ClassId,
-                    TeacherName = c.Teacher?.FullName ?? "Unknown",
-                    Subject = c.Subject,
-                    StartTime = c.StartTime,
-                    EndTime = c.EndTime,
-                    MeetingLink = c.MeetingLink,
-                    Status = c.Status,
-                    RecurrencePattern = c.RecurrencePattern
-                })
-                .ToList();
-
-            // Past classes (completed)
-            var pastClasses = allClasses
-                .Where(c => c.StartTime.Date < today || c.Status == "Completed")
-                .OrderByDescending(c => c.StartTime)
-                .Take(20) // Limit to last 20 classes
-                .Select(c => new StudentClassDto
-                {
-                    ClassId = c.ClassId,
-                    TeacherName = c.Teacher?.FullName ?? "Unknown",
-                    Subject = c.Subject,
-                    StartTime = c.StartTime,
-                    EndTime = c.EndTime,
-                    MeetingLink = c.MeetingLink,
-                    Status = c.Status,
-                    RecurrencePattern = c.RecurrencePattern
-                })
-                .ToList();
-
-            var dashboard = new StudentDashboardDto
+            try
             {
-                StudentId = student.Id,
-                StudentName = student.FullName,
-                Email = student.Email,
-                Phone = student.Phone,
-                ClassYear = student.ClassYear,
-                Subject = student.Subject,
-                TotalClasses = allClasses.Count(),
-                CompletedClasses = allClasses.Count(c => c.Status == "Completed"),
-                UpcomingClasses = upcomingClasses.Count,
-                TodaysClasses = todaysClasses,
-                UpcomingClassesList = upcomingClasses,
-                PastClasses = pastClasses
-            };
+                // Extract student ID from JWT
+                var studentIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
-            return Ok(dashboard);
+                _logger.LogInformation("Student ID Claim: {StudentIdClaim}, Claims: {@Claims}", 
+                    studentIdClaim, User.Claims.Select(c => new { c.Type, c.Value }));
+
+                if (string.IsNullOrWhiteSpace(studentIdClaim))
+                {
+                    _logger.LogWarning("No student ID found in JWT claims");
+                    return Unauthorized(new { message = "Student ID not found in token." });
+                }
+
+                if (!int.TryParse(studentIdClaim, out var studentId))
+                {
+                    _logger.LogWarning("Invalid student ID in token: {StudentIdClaim}", studentIdClaim);
+                    return Unauthorized(new { message = "Invalid student token format." });
+                }
+
+                _logger.LogInformation("Getting dashboard for student: {StudentId}", studentId);
+
+                // Get student details
+                var student = await _studentRepository.GetByIdAsync(studentId);
+                if (student == null)
+                    return NotFound(new { message = "Student not found." });
+
+                // Get all regular classes for this student
+                var allClasses = await _regularClassRepository.GetByStudentAsync(studentId);
+                _logger.LogInformation("Found {ClassCount} classes for student {StudentId}", allClasses.Count(), studentId);
+
+                var today = DateTime.UtcNow.Date;
+
+                // Convert to list first to avoid deferred execution issues
+                var classesLst = allClasses.ToList();
+
+                // Today's classes
+                var todaysClasses = classesLst
+                    .Where(c => c.StartTime.Date == today && c.Status != "Cancelled")
+                    .OrderBy(c => c.StartTime)
+                    .Select(c => new StudentClassDto
+                    {
+                        ClassId = c.ClassId,
+                        TeacherName = c.Teacher?.FullName ?? "Unknown",
+                        Subject = c.Subject,
+                        StartTime = c.StartTime,
+                        EndTime = c.EndTime,
+                        MeetingLink = c.MeetingLink,
+                        Status = c.Status,
+                        RecurrencePattern = c.RecurrencePattern
+                    })
+                    .ToList();
+
+                // Upcoming classes (future, excluding today)
+                var upcomingClasses = classesLst
+                    .Where(c => c.StartTime.Date > today && c.Status != "Cancelled")
+                    .OrderBy(c => c.StartTime)
+                    .Take(20) // Limit to next 20 classes
+                    .Select(c => new StudentClassDto
+                    {
+                        ClassId = c.ClassId,
+                        TeacherName = c.Teacher?.FullName ?? "Unknown",
+                        Subject = c.Subject,
+                        StartTime = c.StartTime,
+                        EndTime = c.EndTime,
+                        MeetingLink = c.MeetingLink,
+                        Status = c.Status,
+                        RecurrencePattern = c.RecurrencePattern
+                    })
+                    .ToList();
+
+                // Past classes (completed)
+                var pastClasses = classesLst
+                    .Where(c => c.StartTime.Date < today || c.Status == "Completed")
+                    .OrderByDescending(c => c.StartTime)
+                    .Take(20) // Limit to last 20 classes
+                    .Select(c => new StudentClassDto
+                    {
+                        ClassId = c.ClassId,
+                        TeacherName = c.Teacher?.FullName ?? "Unknown",
+                        Subject = c.Subject,
+                        StartTime = c.StartTime,
+                        EndTime = c.EndTime,
+                        MeetingLink = c.MeetingLink,
+                        Status = c.Status,
+                        RecurrencePattern = c.RecurrencePattern
+                    })
+                    .ToList();
+
+                var dashboard = new StudentDashboardDto
+                {
+                    StudentId = student.Id,
+                    StudentName = student.FullName,
+                    Email = student.Email,
+                    Phone = student.Phone,
+                    ClassYear = student.ClassYear,
+                    Subject = student.Subject,
+                    TotalClasses = classesLst.Count(),
+                    CompletedClasses = classesLst.Count(c => c.Status == "Completed"),
+                    UpcomingClasses = upcomingClasses.Count,
+                    TodaysClasses = todaysClasses,
+                    UpcomingClassesList = upcomingClasses,
+                    PastClasses = pastClasses
+                };
+
+                return Ok(dashboard);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting student dashboard");
+                return StatusCode(StatusCodes.Status500InternalServerError, new
+                {
+                    message = "An error occurred while retrieving dashboard data.",
+                    error = ex.Message
+                });
+            }
         }
 
         /// <summary>
