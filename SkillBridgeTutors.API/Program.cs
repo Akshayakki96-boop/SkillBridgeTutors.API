@@ -1,4 +1,6 @@
 using System.Text;
+using System.Text;
+using System.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -123,6 +125,51 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Apply pending migrations automatically and ensure schema is up-to-date
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        // Apply any pending migrations
+        dbContext.Database.Migrate();
+
+        // Verify that required columns exist in Students table and add them if missing
+        var connection = dbContext.Database.GetDbConnection();
+        connection.Open();
+        using (var command = connection.CreateCommand())
+        {
+            // Check if GoogleId column exists
+            command.CommandText = @"
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'GoogleId'
+                )
+                BEGIN
+                    ALTER TABLE Students ADD GoogleId nvarchar(max) NULL;
+                END
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'AuthProvider'
+                )
+                BEGIN
+                    ALTER TABLE Students ADD AuthProvider nvarchar(max) NULL;
+                END";
+
+            command.ExecuteNonQuery();
+        }
+        connection.Close();
+    }
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while applying migrations or verifying schema");
+    // Don't throw - allow app to start even if migration verification fails
+}
 
 // Swagger
 app.UseSwagger();
