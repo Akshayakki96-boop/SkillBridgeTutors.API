@@ -109,74 +109,94 @@ namespace SkillBridgeTutors.API.Controllers
         [HttpPost("google-signin")]
         public async Task<IActionResult> GoogleSignIn([FromBody] StudentGoogleSignInDto dto)
         {
-            // Verify the ID token
-            var payload = await _googleAuthService.VerifyIdTokenAsync(dto.IdToken);
-            if (payload == null)
-                return Unauthorized(new { message = "Invalid Google token." });
-
-            // Check if student exists by Google ID
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.GoogleId == payload.Subject);
-
-            if (student != null)
+            try
             {
-                // Existing student - just login
-                if (!student.IsActive)
-                    return Unauthorized(new { message = "Your account has been deactivated." });
+                // Validate input
+                if (string.IsNullOrWhiteSpace(dto.IdToken))
+                    return BadRequest(new { message = "IdToken is required." });
 
-                var token = _tokenService.GenerateToken(student);
-                return Ok(new StudentAuthResponseDto
+                // Verify the ID token
+                var payload = await _googleAuthService.VerifyIdTokenAsync(dto.IdToken);
+                if (payload == null)
+                    return Unauthorized(new { message = "Invalid Google token." });
+
+                // Validate email from payload
+                if (string.IsNullOrWhiteSpace(payload.Email))
+                    return BadRequest(new { message = "Google account email is required." });
+
+                // Check if student exists by Google ID
+                var student = await _context.Students.FirstOrDefaultAsync(s => s.GoogleId == payload.Subject);
+
+                if (student != null)
                 {
-                    Token = token,
-                    StudentId = student.Id,
-                    Email = student.Email,
-                    FullName = student.FullName,
-                    ExpiresAt = DateTime.UtcNow.AddHours(12),
+                    // Existing student - just login
+                    if (!student.IsActive)
+                        return Unauthorized(new { message = "Your account has been deactivated." });
+
+                    var token = _tokenService.GenerateToken(student);
+                    return Ok(new StudentAuthResponseDto
+                    {
+                        Token = token,
+                        StudentId = student.Id,
+                        Email = student.Email,
+                        FullName = student.FullName,
+                        ExpiresAt = DateTime.UtcNow.AddHours(12),
+                        PaymentRequired = true,
+                        PaymentCompleted = student.IsActive
+                    });
+                }
+
+                // New student - check if email already exists
+                var existingByEmail = await _context.Students.FirstOrDefaultAsync(s => s.Email == payload.Email);
+                if (existingByEmail != null)
+                {
+                    // Email exists but not linked to Google - offer to link
+                    return Conflict(new
+                    {
+                        message = "Email already registered. Please login with your password or reset it.",
+                        email = payload.Email
+                    });
+                }
+
+                // Create new student
+                var newStudent = new Student
+                {
+                    FullName = payload.Name ?? payload.Email,
+                    Email = payload.Email,
+                    GoogleId = payload.Subject,
+                    AuthProvider = "google",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // Random password - not used
+                    Phone = dto.Phone ?? string.Empty,
+                    ParentFirstName = dto.ParentFirstName,
+                    ParentLastName = dto.ParentLastName,
+                    ClassYear = dto.ClassYear,
+                    Subject = dto.Subject,
+                    Address = dto.Address,
+                    IsActive = false  // Still requires payment
+                };
+
+                _context.Students.Add(newStudent);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GoogleSignIn), new StudentAuthResponseDto
+                {
+                    StudentId = newStudent.Id,
+                    Email = newStudent.Email,
+                    FullName = newStudent.FullName,
+                    ExpiresAt = null,
                     PaymentRequired = true,
-                    PaymentCompleted = student.IsActive
+                    PaymentCompleted = false
                 });
             }
-
-            // New student - check if email already exists
-            var existingByEmail = await _context.Students.FirstOrDefaultAsync(s => s.Email == payload.Email);
-            if (existingByEmail != null)
+            catch (Exception ex)
             {
-                // Email exists but not linked to Google - offer to link
-                return Conflict(new
+                return StatusCode(StatusCodes.Status500InternalServerError, new
                 {
-                    message = "Email already registered. Please login with your password or reset it.",
-                    email = payload.Email
+                    message = "An error occurred during Google sign-in.",
+                    error = ex.Message,
+                    details = ex.InnerException?.Message
                 });
             }
-
-            // Create new student
-            var newStudent = new Student
-            {
-                FullName = payload.Name ?? payload.Email,
-                Email = payload.Email,
-                GoogleId = payload.Subject,
-                AuthProvider = "google",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // Random password - not used
-                Phone = dto.Phone ?? string.Empty,
-                ParentFirstName = dto.ParentFirstName,
-                ParentLastName = dto.ParentLastName,
-                ClassYear = dto.ClassYear,
-                Subject = dto.Subject,
-                Address = dto.Address,
-                IsActive = false  // Still requires payment
-            };
-
-            _context.Students.Add(newStudent);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GoogleSignIn), new StudentAuthResponseDto
-            {
-                StudentId = newStudent.Id,
-                Email = newStudent.Email,
-                FullName = newStudent.FullName,
-                ExpiresAt = null,
-                PaymentRequired = true,
-                PaymentCompleted = false
-            });
         }
 
         /// <summary>
