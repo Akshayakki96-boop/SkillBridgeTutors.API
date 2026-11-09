@@ -136,20 +136,89 @@ try
 
         logger.LogInformation("Starting database migration and schema verification");
 
-        // First ensure schema is correct
-        await SchemaMigrationHelper.EnsureStudentsTableSchemaAsync(dbContext, logger);
+        try
+        {
+            // First ensure schema is correct - add missing columns directly
+            var connection = dbContext.Database.GetDbConnection();
 
-        // Then apply any pending migrations
-        logger.LogInformation("Applying pending Entity Framework migrations...");
-        dbContext.Database.Migrate();
-        logger.LogInformation("Database ready - all migrations applied");
+            if (connection.State == System.Data.ConnectionState.Closed)
+            {
+                await connection.OpenAsync();
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandTimeout = 120;
+                command.CommandType = System.Data.CommandType.Text;
+
+                // Add GoogleId column if missing
+                command.CommandText = @"
+                    IF OBJECT_ID(N'[dbo].[Students]', N'U') IS NOT NULL
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                            WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'GoogleId'
+                        )
+                        BEGIN
+                            ALTER TABLE dbo.Students ADD GoogleId nvarchar(max) NULL;
+                            PRINT 'Successfully added GoogleId column to Students table';
+                        END
+                    END";
+
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("GoogleId column check completed");
+
+                // Add AuthProvider column if missing
+                command.CommandText = @"
+                    IF OBJECT_ID(N'[dbo].[Students]', N'U') IS NOT NULL
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                            WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'AuthProvider'
+                        )
+                        BEGIN
+                            ALTER TABLE dbo.Students ADD AuthProvider nvarchar(max) NULL;
+                            PRINT 'Successfully added AuthProvider column to Students table';
+                        END
+                    END";
+
+                await command.ExecuteNonQueryAsync();
+                logger.LogInformation("AuthProvider column check completed");
+            }
+
+            if (connection.State == System.Data.ConnectionState.Open)
+            {
+                await connection.CloseAsync();
+            }
+
+            // Then apply any pending migrations
+            logger.LogInformation("Applying pending Entity Framework migrations...");
+            dbContext.Database.Migrate();
+            logger.LogInformation("Database ready - all migrations applied and schema verified");
+        }
+        catch (Exception schemaEx)
+        {
+            var logger2 = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            logger2.LogWarning(schemaEx, "Schema migration warning - continuing with EF Core migrations");
+
+            // Try to apply migrations anyway
+            try
+            {
+                dbContext.Database.Migrate();
+                logger2.LogInformation("EF Core migrations applied successfully");
+            }
+            catch (Exception migrEx)
+            {
+                logger2.LogError(migrEx, "Failed to apply migrations");
+            }
+        }
     }
 }
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
     logger.LogError(ex, "An error occurred during database initialization");
-    // Log but continue - the application may still work or the issue may resolve itself
+    // Continue - the application should still start
 }
 
 // Swagger
