@@ -19,6 +19,7 @@ namespace SkillBridgeTutors.API.DTOs
         /// Not provided by @react-oauth/google library in ID token flow
         /// </summary>
         public string? AccessToken { get; set; }
+
     }
 
     /// <summary>
