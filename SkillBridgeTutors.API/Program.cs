@@ -132,43 +132,24 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-        // Apply any pending migrations
+        logger.LogInformation("Starting database migration and schema verification");
+
+        // First ensure schema is correct
+        await SchemaMigrationHelper.EnsureStudentsTableSchemaAsync(dbContext, logger);
+
+        // Then apply any pending migrations
+        logger.LogInformation("Applying pending Entity Framework migrations...");
         dbContext.Database.Migrate();
-
-        // Verify that required columns exist in Students table and add them if missing
-        var connection = dbContext.Database.GetDbConnection();
-        connection.Open();
-        using (var command = connection.CreateCommand())
-        {
-            // Check if GoogleId column exists
-            command.CommandText = @"
-                IF NOT EXISTS (
-                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'GoogleId'
-                )
-                BEGIN
-                    ALTER TABLE Students ADD GoogleId nvarchar(max) NULL;
-                END
-
-                IF NOT EXISTS (
-                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_NAME = 'Students' AND COLUMN_NAME = 'AuthProvider'
-                )
-                BEGIN
-                    ALTER TABLE Students ADD AuthProvider nvarchar(max) NULL;
-                END";
-
-            command.ExecuteNonQuery();
-        }
-        connection.Close();
+        logger.LogInformation("Database ready - all migrations applied");
     }
 }
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred while applying migrations or verifying schema");
-    // Don't throw - allow app to start even if migration verification fails
+    logger.LogError(ex, "An error occurred during database initialization");
+    // Log but continue - the application may still work or the issue may resolve itself
 }
 
 // Swagger

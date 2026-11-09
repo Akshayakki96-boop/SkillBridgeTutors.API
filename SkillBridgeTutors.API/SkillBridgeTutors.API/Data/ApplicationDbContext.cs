@@ -28,9 +28,35 @@ namespace SkillBridgeTutors.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Student>()
-                .HasIndex(s => s.Email)
-                .IsUnique();
+            // Configure Student entity with all properties
+            modelBuilder.Entity<Student>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.FullName).IsRequired();
+                entity.Property(e => e.Email).IsRequired();
+                entity.Property(e => e.PasswordHash).IsRequired();
+                entity.Property(e => e.Phone).IsRequired();
+                entity.Property(e => e.ParentFirstName).IsRequired(false);
+                entity.Property(e => e.ParentLastName).IsRequired(false);
+                entity.Property(e => e.ClassYear).IsRequired(false);
+                entity.Property(e => e.Subject).IsRequired(false);
+                entity.Property(e => e.Address).IsRequired(false);
+
+                // Google OAuth columns
+                entity.Property(e => e.GoogleId)
+                    .IsRequired(false)
+                    .HasColumnType("nvarchar(max)");
+
+                entity.Property(e => e.AuthProvider)
+                    .IsRequired(false)
+                    .HasColumnType("nvarchar(max)");
+
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasIndex(s => s.Email).IsUnique();
+            });
 
             modelBuilder.Entity<Payment>()
                 .HasOne(p => p.Student)
