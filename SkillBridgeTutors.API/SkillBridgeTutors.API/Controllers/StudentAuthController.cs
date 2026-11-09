@@ -86,9 +86,8 @@ namespace SkillBridgeTutors.API.Controllers
             if (student == null || !BCrypt.Net.BCrypt.Verify(dto.Password, student.PasswordHash))
                 return Unauthorized(new { message = "Invalid email or password." });
 
-            if (!student.IsActive)
-                return Unauthorized(new { message = "Please complete payment to activate your account." });
-
+            // Allow login regardless of payment status
+            // Payment is checked separately for feature access (class schedule, etc.)
             var token = _tokenService.GenerateToken(student);
 
             return Ok(new StudentAuthResponseDto
@@ -99,7 +98,7 @@ namespace SkillBridgeTutors.API.Controllers
                 FullName = student.FullName,
                 ExpiresAt = DateTime.UtcNow.AddHours(12),
                 PaymentRequired = true,
-                PaymentCompleted = true
+                PaymentCompleted = student.IsActive  // IsActive indicates payment completion
             });
         }
 
@@ -129,20 +128,18 @@ namespace SkillBridgeTutors.API.Controllers
 
                 if (student != null)
                 {
-                    // Existing student - just login
-                    if (!student.IsActive)
-                        return Unauthorized(new { message = "Your account has been deactivated." });
-
-                    var token = _tokenService.GenerateToken(student);
+                    // Existing student - login allowed regardless of payment status
+                    // Payment status is checked separately for feature access
+                    var authToken = _tokenService.GenerateToken(student);
                     return Ok(new StudentAuthResponseDto
                     {
-                        Token = token,
+                        Token = authToken,
                         StudentId = student.Id,
                         Email = student.Email,
                         FullName = student.FullName,
                         ExpiresAt = DateTime.UtcNow.AddHours(12),
                         PaymentRequired = true,
-                        PaymentCompleted = student.IsActive
+                        PaymentCompleted = student.IsActive  // IsActive indicates payment completion
                     });
                 }
 
@@ -172,20 +169,24 @@ namespace SkillBridgeTutors.API.Controllers
                     ClassYear = dto.ClassYear,
                     Subject = dto.Subject,
                     Address = dto.Address,
-                    IsActive = false  // Still requires payment
+                    IsActive = true  // Allow login even without payment
                 };
 
                 _context.Students.Add(newStudent);
                 await _context.SaveChangesAsync();
 
+                // Generate token for new user
+                var token = _tokenService.GenerateToken(newStudent);
+
                 return CreatedAtAction(nameof(GoogleSignIn), new StudentAuthResponseDto
                 {
+                    Token = token,  // Provide token so user can login
                     StudentId = newStudent.Id,
                     Email = newStudent.Email,
                     FullName = newStudent.FullName,
-                    ExpiresAt = null,
+                    ExpiresAt = DateTime.UtcNow.AddHours(12),
                     PaymentRequired = true,
-                    PaymentCompleted = false
+                    PaymentCompleted = false  // Flag that payment is still needed
                 });
             }
             catch (Exception ex)
