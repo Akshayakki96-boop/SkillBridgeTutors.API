@@ -65,6 +65,18 @@ namespace SkillBridgeTutors.API.Data
 
                     await command.ExecuteNonQueryAsync();
 
+                    // Teachers table has the same Google auth columns
+                    command.CommandText = @"
+                        IF OBJECT_ID(N'[dbo].[Teachers]', N'U') IS NOT NULL
+                        BEGIN
+                            IF COL_LENGTH('dbo.Teachers', 'GoogleId') IS NULL
+                                ALTER TABLE dbo.Teachers ADD GoogleId nvarchar(max) NULL;
+                            IF COL_LENGTH('dbo.Teachers', 'AuthProvider') IS NULL
+                                ALTER TABLE dbo.Teachers ADD AuthProvider nvarchar(max) NULL;
+                        END";
+
+                    await command.ExecuteNonQueryAsync();
+
                     logger.LogInformation("Database schema verification completed successfully");
                 }
 
