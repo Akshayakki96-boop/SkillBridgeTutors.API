@@ -134,7 +134,8 @@ try
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-        logger.LogInformation("Starting database migration and schema verification");
+        logger.LogInformation("==== DATABASE INITIALIZATION STARTED ====");
+        logger.LogInformation("Database: {Database}", dbContext.Database.GetDbConnection().Database);
 
         try
         {
@@ -166,7 +167,7 @@ try
                     END";
 
                 await command.ExecuteNonQueryAsync();
-                logger.LogInformation("GoogleId column check completed");
+                logger.LogInformation("✓ GoogleId column verified/added");
 
                 // Add AuthProvider column if missing
                 command.CommandText = @"
@@ -183,7 +184,7 @@ try
                     END";
 
                 await command.ExecuteNonQueryAsync();
-                logger.LogInformation("AuthProvider column check completed");
+                logger.LogInformation("✓ AuthProvider column verified/added");
             }
 
             if (connection.State == System.Data.ConnectionState.Open)
@@ -194,22 +195,23 @@ try
             // Then apply any pending migrations
             logger.LogInformation("Applying pending Entity Framework migrations...");
             dbContext.Database.Migrate();
-            logger.LogInformation("Database ready - all migrations applied and schema verified");
+            logger.LogInformation("✓ EF Core migrations applied successfully");
+
+            logger.LogInformation("==== DATABASE INITIALIZATION COMPLETED SUCCESSFULLY ====");
         }
         catch (Exception schemaEx)
         {
-            var logger2 = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            logger2.LogWarning(schemaEx, "Schema migration warning - continuing with EF Core migrations");
+            logger.LogWarning(schemaEx, "⚠ Schema operation warning - attempting EF Core migrations");
 
             // Try to apply migrations anyway
             try
             {
                 dbContext.Database.Migrate();
-                logger2.LogInformation("EF Core migrations applied successfully");
+                logger.LogInformation("✓ EF Core migrations applied successfully");
             }
             catch (Exception migrEx)
             {
-                logger2.LogError(migrEx, "Failed to apply migrations");
+                logger.LogError(migrEx, "❌ Failed to apply migrations");
             }
         }
     }
@@ -217,7 +219,7 @@ try
 catch (Exception ex)
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred during database initialization");
+    logger.LogError(ex, "❌ An error occurred during database initialization");
     // Continue - the application should still start
 }
 
