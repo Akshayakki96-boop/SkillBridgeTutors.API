@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -301,6 +302,97 @@ namespace SkillBridgeTutors.API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Password has been reset successfully." });
+        }
+
+        /// <summary>
+        /// Update student profile details (used after Google sign-in or profile editing)
+        /// </summary>
+        [HttpPut("update-profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateStudentProfileDto dto)
+        {
+            // Get authenticated student
+            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(studentIdClaim, out var studentId))
+            return Unauthorized(new { message = "Invalid token." });
+
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            if (student == null)
+            return NotFound(new { message = "Student not found." });
+
+            // Update provided fields
+            if (!string.IsNullOrWhiteSpace(dto.FullName))
+            student.FullName = dto.FullName;
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+            student.Phone = dto.Phone;
+
+            if (!string.IsNullOrWhiteSpace(dto.ParentFirstName))
+            student.ParentFirstName = dto.ParentFirstName;
+
+            if (!string.IsNullOrWhiteSpace(dto.ParentLastName))
+            student.ParentLastName = dto.ParentLastName;
+
+            if (!string.IsNullOrWhiteSpace(dto.ClassYear))
+            student.ClassYear = dto.ClassYear;
+
+            if (!string.IsNullOrWhiteSpace(dto.Subject))
+            student.Subject = dto.Subject;
+
+            if (!string.IsNullOrWhiteSpace(dto.Address))
+            student.Address = dto.Address;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new StudentAuthResponseDto
+            {
+            StudentId = student.Id,
+            Email = student.Email,
+            FullName = student.FullName,
+            ExpiresAt = DateTime.UtcNow.AddHours(12),
+            PaymentRequired = true,
+            PaymentCompleted = student.IsActive
+            });
+        }
+
+        /// <summary>
+        /// Get student profile details
+        /// </summary>
+        [HttpGet("profile")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            // Get authenticated student
+            var studentIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(studentIdClaim, out var studentId))
+            return Unauthorized(new { message = "Invalid token." });
+
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+            if (student == null)
+            return NotFound(new { message = "Student not found." });
+
+            return Ok(new
+            {
+            student.Id,
+            student.FullName,
+            student.Email,
+            student.Phone,
+            student.ParentFirstName,
+            student.ParentLastName,
+            student.ClassYear,
+            student.Subject,
+            student.Address,
+            student.AuthProvider,
+            student.IsActive,
+            ProfileComplete = !string.IsNullOrWhiteSpace(student.Phone) &&
+                              !string.IsNullOrWhiteSpace(student.ParentFirstName) &&
+                              !string.IsNullOrWhiteSpace(student.ClassYear) &&
+                              !string.IsNullOrWhiteSpace(student.Subject)
+            });
         }
     }
 }

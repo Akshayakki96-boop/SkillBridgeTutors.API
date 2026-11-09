@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations;
 
 namespace SkillBridgeTutors.API.DTOs
 {
@@ -43,5 +42,19 @@ namespace SkillBridgeTutors.API.DTOs
     {
         public string? Subject { get; set; }
         public string? Bio { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for updating student profile (after sign-in or during profile edit)
+    /// </summary>
+    public class UpdateStudentProfileDto
+    {
+        public string? FullName { get; set; }
+        public string? Phone { get; set; }
+        public string? ParentFirstName { get; set; }
+        public string? ParentLastName { get; set; }
+        public string? ClassYear { get; set; }
+        public string? Subject { get; set; }
+        public string? Address { get; set; }
     }
 }
