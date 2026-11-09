@@ -7,11 +7,18 @@ namespace SkillBridgeTutors.API.DTOs
     /// </summary>
     public class GoogleSignInDto
     {
-        [Required]
+        /// <summary>
+        /// Google ID Token (required) - used for identity verification
+        /// Obtained from @react-oauth/google library
+        /// </summary>
+        [Required(ErrorMessage = "IdToken is required for authentication")]
         public string IdToken { get; set; } = string.Empty;
 
-        [Required]
-        public string AccessToken { get; set; } = string.Empty;
+        /// <summary>
+        /// Google Access Token (optional) - used for accessing user data
+        /// Not provided by @react-oauth/google library in ID token flow
+        /// </summary>
+        public string? AccessToken { get; set; }
     }
 
     /// <summary>
