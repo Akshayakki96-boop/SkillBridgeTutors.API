@@ -7,7 +7,7 @@ namespace SkillBridgeTutors.API.DTOs
         public int StudentId { get; set; }
         public string StudentName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public string? Phone { get; set; }
+        public string Phone { get; set; } = string.Empty;
         public string? ClassYear { get; set; }
         public string? Subject { get; set; } = "Maths";
         

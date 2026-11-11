@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using SkillBridgeTutors.API.Data;
 using SkillBridgeTutors.API.DTOs;
+using SkillBridgeTutors.API.Helpers;
 using SkillBridgeTutors.API.Interfaces;
 using SkillBridgeTutors.API.Models;
 using SkillBridgeTutors.API.Services;
@@ -54,11 +55,11 @@ namespace SkillBridgeTutors.API.Controllers
                 Email = dto.Email,
                 PasswordHash = passwordHash,
                 Phone = dto.Phone,
-                ParentFirstName = dto.ParentFirstName,
-                ParentLastName = dto.ParentLastName,
-                ClassYear = dto.ClassYear,
-                Subject = string.IsNullOrWhiteSpace(dto.Subject) ? "Maths" : dto.Subject,
-                Address = dto.Address,
+                ParentFirstName = PlaceholderText.Clean(dto.ParentFirstName),
+                ParentLastName = PlaceholderText.Clean(dto.ParentLastName),
+                ClassYear = PlaceholderText.Clean(dto.ClassYear),
+                Subject = "Maths",
+                Address = PlaceholderText.Clean(dto.Address),
                 AuthProvider = "email",
                 IsActive = false
             };
@@ -165,11 +166,11 @@ namespace SkillBridgeTutors.API.Controllers
                     AuthProvider = "google",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // Random password - not used
                     Phone = dto.Phone ?? string.Empty,
-                    ParentFirstName = dto.ParentFirstName,
-                    ParentLastName = dto.ParentLastName,
-                    ClassYear = dto.ClassYear,
-                    Subject = string.IsNullOrWhiteSpace(dto.Subject) ? "Maths" : dto.Subject,
-                    Address = dto.Address,
+                    ParentFirstName = PlaceholderText.Clean(dto.ParentFirstName),
+                    ParentLastName = PlaceholderText.Clean(dto.ParentLastName),
+                    ClassYear = PlaceholderText.Clean(dto.ClassYear),
+                    Subject = "Maths",
+                    Address = PlaceholderText.Clean(dto.Address),
                     IsActive = true  // Allow login even without payment
                 };
 
@@ -322,27 +323,31 @@ namespace SkillBridgeTutors.API.Controllers
             if (student == null)
             return NotFound(new { message = "Student not found." });
 
-            // Update provided fields
-            if (!string.IsNullOrWhiteSpace(dto.FullName))
-            student.FullName = dto.FullName;
+            // Update provided fields; the "string" API placeholder is treated as blank
+            var fullName = PlaceholderText.Clean(dto.FullName);
+            if (fullName != null)
+            student.FullName = fullName;
 
-            if (!string.IsNullOrWhiteSpace(dto.Phone))
-            student.Phone = dto.Phone;
+            var phone = PlaceholderText.Clean(dto.Phone);
+            if (phone != null)
+            student.Phone = phone;
 
-            if (!string.IsNullOrWhiteSpace(dto.ParentFirstName))
-            student.ParentFirstName = dto.ParentFirstName;
+            var classYear = PlaceholderText.Clean(dto.ClassYear);
+            if (classYear != null)
+            student.ClassYear = classYear;
 
-            if (!string.IsNullOrWhiteSpace(dto.ParentLastName))
-            student.ParentLastName = dto.ParentLastName;
+            // Optional fields can be cleared by sending a blank value
+            if (dto.ParentFirstName != null)
+            student.ParentFirstName = PlaceholderText.Clean(dto.ParentFirstName);
 
-            if (!string.IsNullOrWhiteSpace(dto.ClassYear))
-            student.ClassYear = dto.ClassYear;
+            if (dto.ParentLastName != null)
+            student.ParentLastName = PlaceholderText.Clean(dto.ParentLastName);
 
-            if (!string.IsNullOrWhiteSpace(dto.Subject))
-            student.Subject = dto.Subject;
+            if (dto.Address != null)
+            student.Address = PlaceholderText.Clean(dto.Address);
 
-            if (!string.IsNullOrWhiteSpace(dto.Address))
-            student.Address = dto.Address;
+            // Primary subject is fixed and cannot be edited
+            student.Subject = "Maths";
 
             await _context.SaveChangesAsync();
 
@@ -378,20 +383,19 @@ namespace SkillBridgeTutors.API.Controllers
             return Ok(new
             {
             student.Id,
-            student.FullName,
+            FullName = PlaceholderText.Clean(student.FullName) ?? string.Empty,
             student.Email,
-            student.Phone,
-            student.ParentFirstName,
-            student.ParentLastName,
-            student.ClassYear,
-            Subject = string.IsNullOrWhiteSpace(student.Subject) ? "Maths" : student.Subject,
-            student.Address,
+            Phone = PlaceholderText.Clean(student.Phone) ?? string.Empty,
+            ParentFirstName = PlaceholderText.Clean(student.ParentFirstName) ?? string.Empty,
+            ParentLastName = PlaceholderText.Clean(student.ParentLastName) ?? string.Empty,
+            ClassYear = PlaceholderText.Clean(student.ClassYear) ?? string.Empty,
+            Subject = "Maths",
+            Address = PlaceholderText.Clean(student.Address) ?? string.Empty,
             student.AuthProvider,
             student.IsActive,
-            ProfileComplete = !string.IsNullOrWhiteSpace(student.Phone) &&
-                              !string.IsNullOrWhiteSpace(student.ParentFirstName) &&
-                              !string.IsNullOrWhiteSpace(student.ClassYear) &&
-                              !string.IsNullOrWhiteSpace(student.Subject)
+            ProfileComplete = PlaceholderText.Clean(student.Phone) != null &&
+                              PlaceholderText.Clean(student.ParentFirstName) != null &&
+                              PlaceholderText.Clean(student.ClassYear) != null
             });
         }
     }
