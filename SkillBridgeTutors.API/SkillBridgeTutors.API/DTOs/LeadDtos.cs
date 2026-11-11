@@ -7,7 +7,6 @@ namespace SkillBridgeTutors.API.DTOs
         [Required]
         public string ParentFirstName { get; set; } = string.Empty;
 
-        [Required]
         public string ParentLastName { get; set; } = string.Empty;
 
         [Required, EmailAddress]
