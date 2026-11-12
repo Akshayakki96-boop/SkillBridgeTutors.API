@@ -122,7 +122,8 @@ namespace SkillBridgeTutors.API.Controllers
                     CaptureId = p.PayPalCaptureId,
                     Amount = p.Amount,
                     Currency = p.Currency,
-                    Status = p.Status.ToString()
+                    Status = p.Status.ToString(),
+                    CreatedAt = p.CreatedAt
                 })
                 .ToListAsync();
 

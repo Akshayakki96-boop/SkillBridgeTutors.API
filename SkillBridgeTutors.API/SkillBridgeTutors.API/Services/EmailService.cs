@@ -158,17 +158,16 @@ namespace SkillBridgeTutors.API.Services
             </td>
           </tr>
 
-          <!-- Join Button -->
+          <!-- Link Info -->
           <tr>
             <td align=""center"" style=""padding:0 40px 32px;"">
-              <a href=""{meetingLink}""
-                style=""display:inline-block;background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#ffffff;
-                       text-decoration:none;padding:14px 40px;border-radius:50px;font-size:15px;
-                       font-weight:600;letter-spacing:0.5px;box-shadow:0 4px 12px rgba(26,115,232,0.4);"">
-                🎥 &nbsp; Join Demo Class
-              </a>
+              <div style=""display:inline-block;background:#e8f5e9;border:2px solid #4caf50;border-radius:50px;padding:14px 40px;text-align:center;"">
+                <p style=""margin:0;color:#2e7d32;font-size:15px;font-weight:600;"">
+                  ✅ &nbsp; We will send you the demo link soon
+                </p>
+              </div>
               <p style=""margin:12px 0 0;color:#999;font-size:12px;"">
-                (Meeting link will be active 10 minutes before the session)
+                The session link will be shared with you shortly before the demo class begins
               </p>
             </td>
           </tr>
@@ -569,9 +568,13 @@ namespace SkillBridgeTutors.API.Services
       <tr><td style=""color:#888;"">Repeats</td><td style=""text-align:right;""><strong>{regularClass.RecurrencePattern ?? "Weekly"}</strong></td></tr>
     </table>
     <p style=""text-align:center;margin:24px 0;"">
-      <a href=""{meetingLink}"" style=""display:inline-block;background:#1a73e8;color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:50px;font-weight:600;"">Join Class</a>
+      <div style=""display:inline-block;background:#e8f5e9;border:2px solid #4caf50;border-radius:50px;padding:14px 36px;text-align:center;"">
+        <p style=""margin:0;color:#2e7d32;font-size:15px;font-weight:600;"">
+          ✅ &nbsp; You will receive the session link soon
+        </p>
+      </div>
     </p>
-    <p style=""color:#777;font-size:13px;"">Meeting link: <a href=""{meetingLink}"">{meetingLink}</a></p>
+    <p style=""color:#777;font-size:13px;"">The session link will be shared with you shortly before the class begins.</p>
     <p style=""color:#777;font-size:13px;"">Unable to attend? Contact us at <a href=""mailto:{supportEmail}"">{supportEmail}</a> to request a reschedule.</p>
   </div>
 </body>
@@ -643,13 +646,15 @@ namespace SkillBridgeTutors.API.Services
       </table>
 
       <div style=""text-align:center;margin-top:28px;"">
-        <a href=""{meetingLink}"" style=""background:#1a73e8;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:600;"">
-          Join Demo Class
-        </a>
+        <div style=""display:inline-block;background:#e8f5e9;border:2px solid #4caf50;border-radius:50px;padding:14px 32px;text-align:center;"">
+          <p style=""margin:0;color:#2e7d32;font-size:15px;font-weight:600;"">
+            ✅ &nbsp; Session link will be sent soon
+          </p>
+        </div>
       </div>
 
       <p style=""color:#888;font-size:13px;margin-top:24px;text-align:center;"">
-        Please join the session 5 minutes early to set up.
+        You will receive the meeting link shortly before the demo class begins
       </p>
     </td></tr>
   </table>
