@@ -17,6 +17,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<TeacherAvailability>> GetActiveAsync()
         {
             return await _context.TeacherAvailabilities
+                .AsNoTracking()
                 .Where(a => a.IsActive)
                 .ToListAsync();
         }
@@ -24,6 +25,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<TeacherAvailability>> GetByTeacherAsync(long teacherId)
         {
             return await _context.TeacherAvailabilities
+                .AsNoTracking()
                 .Where(a => a.TeacherId == teacherId && a.IsActive)
                 .OrderBy(a => a.DayOfWeek)
                 .ThenBy(a => a.StartTime)
@@ -33,6 +35,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<TeacherAvailability?> GetByIdAsync(long availabilityId)
         {
             return await _context.TeacherAvailabilities
+                .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.AvailabilityId == availabilityId);
         }
 

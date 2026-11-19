@@ -69,10 +69,12 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<DemoBooking>> GetBookingsAsync()
         {
             return await _context.DemoBookings
+                .AsNoTracking()
                 .Include(b => b.Lead)
                 .Include(b => b.DemoSlot)
                 .Include(b => b.Teacher)
                 .OrderByDescending(b => b.BookedAt)
+                .Take(100)  // Limit to prevent loading too much data
                 .ToListAsync();
         }
 

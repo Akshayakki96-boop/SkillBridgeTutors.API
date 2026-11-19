@@ -17,6 +17,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<Student>> GetAllAsync()
         {
             return await _context.Students
+                .AsNoTracking()
                 .OrderBy(s => s.FullName)
                 .ToListAsync();
         }
@@ -24,6 +25,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<Student?> GetByIdAsync(int studentId)
         {
             return await _context.Students
+                .AsNoTracking()
                 .Include(s => s.RegularClasses)
                 .ThenInclude(c => c.Teacher)
                 .Include(s => s.Payments)
@@ -33,6 +35,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<Student?> GetByEmailAsync(string email)
         {
             return await _context.Students
+                .AsNoTracking()
                 .Include(s => s.RegularClasses)
                 .ThenInclude(c => c.Teacher)
                 .FirstOrDefaultAsync(s => s.Email == email);

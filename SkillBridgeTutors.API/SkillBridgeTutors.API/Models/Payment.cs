@@ -16,11 +16,11 @@ namespace SkillBridgeTutors.API.Models
         public int StudentId { get; set; }
         public Student? Student { get; set; }
 
-        /// <summary>PayPal order id (from create-order call).</summary>
-        public string PayPalOrderId { get; set; } = string.Empty;
+        /// <summary>Razorpay order id (from create-order call).</summary>
+        public string RazorpayOrderId { get; set; } = string.Empty;
 
-        /// <summary>PayPal capture id (once payment is completed).</summary>
-        public string? PayPalCaptureId { get; set; }
+        /// <summary>Razorpay payment id (once payment is completed).</summary>
+        public string? RazorpayPaymentId { get; set; }
 
         public decimal Amount { get; set; }
         public string Currency { get; set; } = "GBP";

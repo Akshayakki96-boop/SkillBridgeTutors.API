@@ -43,24 +43,19 @@ namespace SkillBridgeTutors.API.Controllers
                     return NotFound(new { message = "Student not found" });
                 }
 
-                // Get all classes for the student
-                var allClasses = await _context.RegularClasses
-                    .Where(c => c.StudentId == studentId)
-                    .Include(c => c.Teacher)
-                    .OrderBy(c => c.StartTime)
-                    .ToListAsync();
-
                 var now = DateTime.UtcNow;
                 var todayStart = now.Date;
                 var todayEnd = todayStart.AddDays(1);
 
-                // Categorize classes
-                var todaysClasses = allClasses
-                    .Where(c => c.StartTime >= todayStart && c.StartTime < todayEnd)
+                // Get today's classes
+                var todaysClasses = await _context.RegularClasses
+                    .Where(c => c.StudentId == studentId && c.StartTime >= todayStart && c.StartTime < todayEnd)
+                    .Include(c => c.Teacher)
+                    .OrderBy(c => c.StartTime)
                     .Select(c => new StudentClassDto
                     {
                         ClassId = c.ClassId,
-                        TeacherName = c.Teacher?.FullName ?? "Unknown Teacher",
+                        TeacherName = c.Teacher.FullName ?? "Unknown Teacher",
                         Subject = c.Subject ?? string.Empty,
                         StartTime = c.StartTime,
                         EndTime = c.EndTime,
@@ -68,14 +63,17 @@ namespace SkillBridgeTutors.API.Controllers
                         Status = GetClassStatus(c.StartTime, c.EndTime, now),
                         RecurrencePattern = c.RecurrencePattern
                     })
-                    .ToList();
+                    .ToListAsync();
 
-                var upcomingClasses = allClasses
-                    .Where(c => c.StartTime >= todayEnd)
+                // Get upcoming classes
+                var upcomingClasses = await _context.RegularClasses
+                    .Where(c => c.StudentId == studentId && c.StartTime >= todayEnd)
+                    .Include(c => c.Teacher)
+                    .OrderBy(c => c.StartTime)
                     .Select(c => new StudentClassDto
                     {
                         ClassId = c.ClassId,
-                        TeacherName = c.Teacher?.FullName ?? "Unknown Teacher",
+                        TeacherName = c.Teacher.FullName ?? "Unknown Teacher",
                         Subject = c.Subject ?? string.Empty,
                         StartTime = c.StartTime,
                         EndTime = c.EndTime,
@@ -83,14 +81,17 @@ namespace SkillBridgeTutors.API.Controllers
                         Status = "Scheduled",
                         RecurrencePattern = c.RecurrencePattern
                     })
-                    .ToList();
+                    .ToListAsync();
 
-                var pastClasses = allClasses
-                    .Where(c => c.EndTime < now)
+                // Get past classes
+                var pastClasses = await _context.RegularClasses
+                    .Where(c => c.StudentId == studentId && c.EndTime < now)
+                    .Include(c => c.Teacher)
+                    .OrderByDescending(c => c.StartTime)
                     .Select(c => new StudentClassDto
                     {
                         ClassId = c.ClassId,
-                        TeacherName = c.Teacher?.FullName ?? "Unknown Teacher",
+                        TeacherName = c.Teacher.FullName ?? "Unknown Teacher",
                         Subject = c.Subject ?? string.Empty,
                         StartTime = c.StartTime,
                         EndTime = c.EndTime,
@@ -98,7 +99,12 @@ namespace SkillBridgeTutors.API.Controllers
                         Status = "Completed",
                         RecurrencePattern = c.RecurrencePattern
                     })
-                    .ToList();
+                    .ToListAsync();
+
+                // Get counts efficiently
+                var totalClasses = await _context.RegularClasses
+                    .Where(c => c.StudentId == studentId)
+                    .CountAsync();
 
                 var dashboard = new StudentDashboardDto
                 {
@@ -108,7 +114,7 @@ namespace SkillBridgeTutors.API.Controllers
                     Phone = PlaceholderText.Clean(student.Phone) ?? string.Empty,
                     ClassYear = PlaceholderText.Clean(student.ClassYear),
                     Subject = "Maths",
-                    TotalClasses = allClasses.Count,
+                    TotalClasses = totalClasses,
                     CompletedClasses = pastClasses.Count,
                     UpcomingClasses = upcomingClasses.Count,
                     TodaysClasses = todaysClasses,

@@ -8,5 +8,7 @@ namespace SkillBridgeTutors.API.Interfaces
         Task<Lead?> GetByIdAsync(long id);
         Task<IEnumerable<Lead>> GetAllAsync();
         Task UpdateAsync(Lead lead);
+        Task<Lead?> GetByIdWithBookingsAsync(long id);
+        Task<Lead?> GetByIdWithCallsAsync(long id);
     }
 }

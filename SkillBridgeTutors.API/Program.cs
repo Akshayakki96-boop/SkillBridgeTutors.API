@@ -19,15 +19,22 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlOptions =>
         {
-            // Retry up to 5 times for transient Azure SQL errors (e.g. auto-pause wake-up)
+            // Retry up to 10 times for transient Azure SQL errors (e.g. auto-pause wake-up)
+            // This helps with the initial connection after auto-pause hibernation
             sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(10),
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorNumbersToAdd: null);
 
-            // Fail fast rather than hanging for 120s
-            sqlOptions.CommandTimeout(30);
+            // Increase command timeout to 60s to handle auto-pause wake-up and complex queries
+            sqlOptions.CommandTimeout(60);
+
+            // Optimize for Azure SQL performance
+            sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         });
+
+    // Use AsNoTracking by default for read-only queries (must be overridden when needed)
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
 
 // Repositories
@@ -41,7 +48,7 @@ builder.Services.AddScoped<ITeacherAvailabilityRepository, TeacherAvailabilityRe
 
 // Services
 builder.Services.AddHttpClient<IRetellService, RetellService>();
-builder.Services.AddHttpClient<IPayPalService, PayPalService>();
+builder.Services.AddHttpClient<IRazorpayService, RazorpayService>();
 
 // Email provider - using Resend only
 builder.Services.AddHttpClient<IEmailProvider, ResendEmailProvider>();

@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,33 +16,33 @@ namespace SkillBridgeTutors.API.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly IPayPalService _payPalService;
+        private readonly IRazorpayService _razorpayService;
         private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public PaymentsController(ApplicationDbContext context, IPayPalService payPalService, IEmailService emailService)
+        public PaymentsController(ApplicationDbContext context, IRazorpayService razorpayService, IEmailService emailService, IConfiguration configuration)
         {
             _context = context;
-            _payPalService = payPalService;
+            _razorpayService = razorpayService;
             _emailService = emailService;
+            _configuration = configuration;
         }
 
         /// <summary>
-        /// Create a PayPal order for a student payment. Returns an approval URL to redirect the payer to.
+        /// Create a Razorpay order for a student payment. Returns the order id/amount and the
+        /// public Key ID the frontend needs to open Razorpay Checkout.
         /// </summary>
         [HttpPost("create-order")]
         [AllowAnonymous]
         public async Task<IActionResult> CreateOrder([FromBody] CreatePaymentOrderDto dto)
         {
-            var studentExists = await _context.Students.AnyAsync(s => s.Id == dto.StudentId);
-            if (!studentExists)
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == dto.StudentId);
+            if (student == null)
                 return NotFound(new { message = "Student not found." });
-
-            var order = await _payPalService.CreateOrderAsync(dto.Amount, dto.Currency);
 
             var payment = new Payment
             {
                 StudentId = dto.StudentId,
-                PayPalOrderId = order.OrderId,
                 Amount = dto.Amount,
                 Currency = dto.Currency,
                 Status = PaymentStatus.Created
@@ -50,31 +51,47 @@ namespace SkillBridgeTutors.API.Controllers
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
 
+            var order = await _razorpayService.CreateOrderAsync(dto.Amount, dto.Currency, receipt: $"payment-{payment.Id}");
+
+            payment.RazorpayOrderId = order.OrderId;
+            await _context.SaveChangesAsync();
+
             return Ok(new CreatePaymentOrderResponseDto
             {
                 PaymentId = payment.Id,
                 OrderId = order.OrderId,
-                ApprovalUrl = order.ApprovalUrl
+                Amount = order.Amount,
+                Currency = order.Currency,
+                KeyId = _configuration["Razorpay:KeyId"] ?? string.Empty,
+                StudentName = student.FullName,
+                StudentEmail = student.Email,
+                StudentPhone = student.Phone
             });
         }
 
         /// <summary>
-        /// Capture a previously approved PayPal order to finalize the payment.
+        /// Verify a Razorpay Checkout payment (order id, payment id and signature returned by the
+        /// Checkout "handler" callback) and finalize the payment.
         /// </summary>
-        [HttpPost("capture")]
+        [HttpPost("verify")]
         [AllowAnonymous]
-        public async Task<IActionResult> Capture([FromBody] CapturePaymentDto dto)
+        public async Task<IActionResult> Verify([FromBody] VerifyPaymentDto dto)
         {
             var payment = await _context.Payments
                 .Include(p => p.Student)
-                .FirstOrDefaultAsync(p => p.PayPalOrderId == dto.OrderId);
+                .FirstOrDefaultAsync(p => p.RazorpayOrderId == dto.RazorpayOrderId);
             if (payment == null)
                 return NotFound(new { message = "Payment not found." });
 
-            var result = await _payPalService.CaptureOrderAsync(dto.OrderId);
+            if (!_razorpayService.VerifyPaymentSignature(dto.RazorpayOrderId, dto.RazorpayPaymentId, dto.RazorpaySignature))
+                return BadRequest(new { message = "Payment signature verification failed." });
 
-            payment.PayPalCaptureId = result.CaptureId;
-            payment.Status = result.Status == "COMPLETED" ? PaymentStatus.Completed : PaymentStatus.Failed;
+            // Re-confirm status/amount/currency directly with Razorpay rather than trusting the client.
+            var result = await _razorpayService.GetPaymentAsync(dto.RazorpayPaymentId);
+            var amountMatches = result.OrderId == dto.RazorpayOrderId && result.Currency == payment.Currency;
+
+            payment.RazorpayPaymentId = result.PaymentId;
+            payment.Status = result.Status == "captured" && amountMatches ? PaymentStatus.Completed : PaymentStatus.Failed;
             payment.CompletedAt = payment.Status == PaymentStatus.Completed ? DateTime.UtcNow : null;
 
             if (payment.Status == PaymentStatus.Completed && payment.Student != null && !payment.Student.IsActive)
@@ -98,12 +115,71 @@ namespace SkillBridgeTutors.API.Controllers
             return Ok(new PaymentResponseDto
             {
                 PaymentId = payment.Id,
-                OrderId = payment.PayPalOrderId,
-                CaptureId = payment.PayPalCaptureId,
+                OrderId = payment.RazorpayOrderId,
+                PaymentReference = payment.RazorpayPaymentId,
                 Amount = payment.Amount,
                 Currency = payment.Currency,
                 Status = payment.Status.ToString()
             });
+        }
+
+        /// <summary>
+        /// Razorpay webhook: a server-to-server safety net that finalizes payments even if the
+        /// payer closes the browser before the Checkout "handler" callback runs. Configure this
+        /// URL (/api/payments/webhook) and a webhook secret in the Razorpay dashboard, and set the
+        /// same secret under Razorpay:WebhookSecret in configuration.
+        /// </summary>
+        [HttpPost("webhook")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Webhook()
+        {
+            Request.EnableBuffering();
+            using var reader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+            var payload = await reader.ReadToEndAsync();
+            Request.Body.Position = 0;
+
+            var signature = Request.Headers["X-Razorpay-Signature"].ToString();
+            if (!_razorpayService.VerifyWebhookSignature(payload, signature))
+                return Unauthorized(new { message = "Invalid webhook signature." });
+
+            using var doc = JsonDocument.Parse(payload);
+            var eventType = doc.RootElement.TryGetProperty("event", out var eventProp) ? eventProp.GetString() : null;
+
+            if (eventType == "payment.captured")
+            {
+                var entity = doc.RootElement.GetProperty("payload").GetProperty("payment").GetProperty("entity");
+                var orderId = entity.GetProperty("order_id").GetString() ?? string.Empty;
+                var paymentId = entity.GetProperty("id").GetString() ?? string.Empty;
+
+                var payment = await _context.Payments
+                    .Include(p => p.Student)
+                    .FirstOrDefaultAsync(p => p.RazorpayOrderId == orderId);
+
+                if (payment != null && payment.Status != PaymentStatus.Completed)
+                {
+                    payment.RazorpayPaymentId = paymentId;
+                    payment.Status = PaymentStatus.Completed;
+                    payment.CompletedAt = DateTime.UtcNow;
+
+                    if (payment.Student != null && !payment.Student.IsActive)
+                        payment.Student.IsActive = true;
+
+                    await _context.SaveChangesAsync();
+
+                    if (payment.Student != null)
+                    {
+                        try
+                        {
+                            await _emailService.SendStudentRegistrationAsync(payment.Student);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+            }
+
+            return Ok();
         }
 
         /// <summary>
@@ -118,8 +194,8 @@ namespace SkillBridgeTutors.API.Controllers
                 .Select(p => new PaymentResponseDto
                 {
                     PaymentId = p.Id,
-                    OrderId = p.PayPalOrderId,
-                    CaptureId = p.PayPalCaptureId,
+                    OrderId = p.RazorpayOrderId,
+                    PaymentReference = p.RazorpayPaymentId,
                     Amount = p.Amount,
                     Currency = p.Currency,
                     Status = p.Status.ToString(),

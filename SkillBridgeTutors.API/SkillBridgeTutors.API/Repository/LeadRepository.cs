@@ -24,17 +24,16 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<Lead?> GetByIdAsync(long id)
         {
             return await _context.Leads
-                .Include(l => l.DemoBookings).ThenInclude(b => b.DemoSlot)
-                .Include(l => l.CallRecords)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(l => l.LeadId == id);
         }
 
         public async Task<IEnumerable<Lead>> GetAllAsync()
         {
             return await _context.Leads
-                .Include(l => l.DemoBookings).ThenInclude(b => b.DemoSlot)
-                .Include(l => l.CallRecords)
+                .AsNoTracking()
                 .OrderByDescending(l => l.CreatedAt)
+                .Take(100)  // Limit to prevent loading too much data
                 .ToListAsync();
         }
 
@@ -43,6 +42,31 @@ namespace SkillBridgeTutors.API.Repository
             lead.UpdatedAt = DateTime.UtcNow;
             _context.Leads.Update(lead);
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Get lead with demo bookings (for demo details view)
+        /// </summary>
+        public async Task<Lead?> GetByIdWithBookingsAsync(long id)
+        {
+            return await _context.Leads
+                .AsNoTracking()
+                .Where(l => l.LeadId == id)
+                .Include(l => l.DemoBookings)
+                .ThenInclude(b => b.DemoSlot)
+                .FirstOrDefaultAsync();
+        }
+
+        /// <summary>
+        /// Get lead with call records (for call history view)
+        /// </summary>
+        public async Task<Lead?> GetByIdWithCallsAsync(long id)
+        {
+            return await _context.Leads
+                .AsNoTracking()
+                .Where(l => l.LeadId == id)
+                .Include(l => l.CallRecords)
+                .FirstOrDefaultAsync();
         }
     }
 }

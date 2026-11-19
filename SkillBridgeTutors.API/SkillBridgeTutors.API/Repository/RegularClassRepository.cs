@@ -24,6 +24,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<RegularClass?> GetByIdAsync(long classId)
         {
             return await _context.RegularClasses
+                .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Teacher)
                 .FirstOrDefaultAsync(c => c.ClassId == classId);
@@ -32,6 +33,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<RegularClass>> GetByTeacherAsync(long teacherId)
         {
             return await _context.RegularClasses
+                .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Teacher)
                 .Where(c => c.TeacherId == teacherId && c.Status != "Cancelled")
@@ -42,6 +44,7 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<RegularClass>> GetByStudentAsync(int studentId)
         {
             return await _context.RegularClasses
+                .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Teacher)
                 .Where(c => c.StudentId == studentId && c.Status != "Cancelled")
@@ -53,6 +56,7 @@ namespace SkillBridgeTutors.API.Repository
         {
             var futureDate = DateTime.UtcNow.AddDays(days);
             return await _context.RegularClasses
+                .AsNoTracking()
                 .Include(c => c.Student)
                 .Include(c => c.Teacher)
                 .Where(c => c.StartTime >= DateTime.UtcNow && 

@@ -17,13 +17,16 @@ namespace SkillBridgeTutors.API.Repository
         public async Task<IEnumerable<Teacher>> GetAllAsync()
         {
             return await _context.Teachers
+                .AsNoTracking()
                 .OrderBy(t => t.FullName)
                 .ToListAsync();
         }
 
         public async Task<Teacher?> GetByIdAsync(long teacherId)
         {
-            return await _context.Teachers.FindAsync(teacherId);
+            return await _context.Teachers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.TeacherId == teacherId);
         }
 
         public async Task<Teacher> CreateAsync(Teacher teacher)
