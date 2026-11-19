@@ -12,6 +12,10 @@ namespace SkillBridgeTutors.API.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<RazorpayService> _logger;
 
+        private string KeyId => _configuration["Razorpay:KeyId"] ?? string.Empty;
+        private string KeySecret => _configuration["Razorpay:KeySecret"] ?? string.Empty;
+        private string WebhookSecret => _configuration["Razorpay:WebhookSecret"] ?? string.Empty;
+
         public RazorpayService(HttpClient httpClient, IConfiguration configuration, ILogger<RazorpayService> logger)
         {
             _httpClient = httpClient;
@@ -23,10 +27,6 @@ namespace SkillBridgeTutors.API.Services
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
                 "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{KeyId}:{KeySecret}")));
         }
-
-        private string KeyId => _configuration["Razorpay:KeyId"] ?? string.Empty;
-        private string KeySecret => _configuration["Razorpay:KeySecret"] ?? string.Empty;
-        private string WebhookSecret => _configuration["Razorpay:WebhookSecret"] ?? string.Empty;
 
         public async Task<RazorpayOrderResult> CreateOrderAsync(decimal amount, string currency, string receipt)
         {
