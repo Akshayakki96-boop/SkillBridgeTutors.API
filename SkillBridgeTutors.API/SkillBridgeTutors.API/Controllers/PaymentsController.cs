@@ -79,6 +79,7 @@ namespace SkillBridgeTutors.API.Controllers
         {
             var payment = await _context.Payments
                 .Include(p => p.Student)
+                .AsTracking()
                 .FirstOrDefaultAsync(p => p.RazorpayOrderId == dto.RazorpayOrderId);
             if (payment == null)
                 return NotFound(new { message = "Payment not found." });
@@ -132,7 +133,7 @@ namespace SkillBridgeTutors.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Cancel([FromBody] CancelPaymentDto dto)
         {
-            var payment = await _context.Payments.FirstOrDefaultAsync(p => p.RazorpayOrderId == dto.RazorpayOrderId);
+            var payment = await _context.Payments.AsTracking().FirstOrDefaultAsync(p => p.RazorpayOrderId == dto.RazorpayOrderId);
             if (payment == null)
                 return NotFound(new { message = "Payment not found." });
 
@@ -175,6 +176,7 @@ namespace SkillBridgeTutors.API.Controllers
 
                 var payment = await _context.Payments
                     .Include(p => p.Student)
+                    .AsTracking()
                     .FirstOrDefaultAsync(p => p.RazorpayOrderId == orderId);
 
                 if (payment != null && payment.Status != PaymentStatus.Completed)
