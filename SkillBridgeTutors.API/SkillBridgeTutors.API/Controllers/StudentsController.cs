@@ -60,7 +60,7 @@ namespace SkillBridgeTutors.API.Controllers
                         StartTime = c.StartTime,
                         EndTime = c.EndTime,
                         MeetingLink = c.MeetingLink,
-                        Status = GetClassStatus(c.StartTime, c.EndTime, now),
+                        Status = now < c.StartTime ? "Scheduled" : (now >= c.StartTime && now < c.EndTime ? "In Progress" : "Completed"),
                         RecurrencePattern = c.RecurrencePattern
                     })
                     .ToListAsync();
