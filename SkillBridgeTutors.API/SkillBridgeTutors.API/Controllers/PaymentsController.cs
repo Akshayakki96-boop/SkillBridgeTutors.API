@@ -208,8 +208,12 @@ namespace SkillBridgeTutors.API.Controllers
         /// Get all payments made by a student.
         /// </summary>
         [HttpGet("student/{studentId}")]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> GetByStudent(int studentId)
         {
+            Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+            Response.Headers.Pragma = "no-cache";
+
             var payments = await _context.Payments
                 .Where(p => p.StudentId == studentId)
                 .OrderByDescending(p => p.CreatedAt)
