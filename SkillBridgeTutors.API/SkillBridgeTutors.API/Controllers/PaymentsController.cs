@@ -124,6 +124,28 @@ namespace SkillBridgeTutors.API.Controllers
         }
 
         /// <summary>
+        /// Mark a payment as cancelled when the payer dismisses Razorpay Checkout without paying.
+        /// Idempotent: a no-op if the payment was already completed/finalized by a concurrent
+        /// verify call or webhook.
+        /// </summary>
+        [HttpPost("cancel")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Cancel([FromBody] CancelPaymentDto dto)
+        {
+            var payment = await _context.Payments.FirstOrDefaultAsync(p => p.RazorpayOrderId == dto.RazorpayOrderId);
+            if (payment == null)
+                return NotFound(new { message = "Payment not found." });
+
+            if (payment.Status == PaymentStatus.Created || payment.Status == PaymentStatus.Approved)
+            {
+                payment.Status = PaymentStatus.Cancelled;
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new { paymentId = payment.Id, status = payment.Status.ToString() });
+        }
+
+        /// <summary>
         /// Razorpay webhook: a server-to-server safety net that finalizes payments even if the
         /// payer closes the browser before the Checkout "handler" callback runs. Configure this
         /// URL (/api/payments/webhook) and a webhook secret in the Razorpay dashboard, and set the

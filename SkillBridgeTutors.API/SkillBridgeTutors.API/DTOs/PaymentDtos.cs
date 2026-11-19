@@ -46,6 +46,12 @@ namespace SkillBridgeTutors.API.DTOs
         public string RazorpaySignature { get; set; } = string.Empty;
     }
 
+    public class CancelPaymentDto
+    {
+        [Required]
+        public string RazorpayOrderId { get; set; } = string.Empty;
+    }
+
     public class PaymentResponseDto
     {
         public int PaymentId { get; set; }
